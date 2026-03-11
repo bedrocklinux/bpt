@@ -1,0 +1,25 @@
+#!/bin/sh
+#
+# Test package build dependency
+
+# Package metadata
+pkgname="fakeblock-song-gen"
+pkgver="1.0.0"
+pkgdesc="make dependency test package"
+homepage="N/A"
+license="MIT"
+depends=""
+
+# Build time information
+makearch="noarch"
+makedepends=""
+
+build() {
+	mkdir -p "${pkgdir}/usr/bin/"
+	cat <<EOF > "${pkgdir}/usr/bin/fakeblock-song-gen"
+#!/bin/sh
+printf ". . .\\n. .\\n"
+EOF
+
+chmod a+rx "${pkgdir}/usr/bin/fakeblock-song-gen"
+}

@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# Test package
+
+# Package metadata
+pkgname="fakeblock"
+pkgver="1.0.0"
+pkgdesc="just a boolean driven aggregation, really, of what programmers call hacker traps"
+homepage="N/A"
+license="MIT"
+depends="fakeblock-songs>=1.0.0"
+
+# Build time information
+makearch="noarch"
+makedepends=""
+
+build() {
+	mkdir -p "${pkgdir}/usr/bin/"
+	cat <<EOF > "${pkgdir}/usr/bin/fakeblock"
+#!/bin/sh
+. /etc/fakeblock.conf
+song="\${1}"
+sed "s/[.]/\${sound}/g" "/usr/share/fakeblock/songs/\${song}"
+EOF
+	chmod a+rx "${pkgdir}/usr/bin/fakeblock"
+
+	mkdir -p "${pkgdir}/etc"
+	cat <<EOF > "${pkgdir}/etc/fakeblock.conf"
+sound=tok
+EOF
+}

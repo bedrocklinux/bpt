@@ -1,0 +1,230 @@
+#compdef bpt
+
+_bpt_abspath() {
+    if [[ -z $1 ]]; then
+        print -r -- /
+    elif [[ $1 == /* ]]; then
+        print -r -- "$1"
+    else
+        print -r -- "$PWD/$1"
+    fi
+}
+
+_bpt_root_from_words() {
+    local root='/'
+    local expect_root=0
+    local word
+    local i
+
+    for ((i = 2; i < CURRENT; i++)); do
+        word=${words[i]}
+        if (( expect_root )); then
+            root=$(_bpt_abspath "$word")
+            expect_root=0
+            continue
+        fi
+        case "$word" in
+            --root-dir=*) root=$(_bpt_abspath "${word#*=}") ;;
+            --root-dir|-R) expect_root=1 ;;
+            -R?*) root=$(_bpt_abspath "${word#-R}") ;;
+            -?*R) expect_root=1 ;;
+        esac
+    done
+    print -r -- "$root"
+}
+
+_bpt_world_entries() {
+    local root=$1
+    local world_file="$root/etc/bpt/world"
+    [[ -r $world_file ]] || return 0
+    sed -e 's/#.*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d' "$world_file" 2>/dev/null
+}
+
+_bpt_installed_pkgids() {
+    local root=$1
+    local dir="$root/var/lib/bpt/instpkg"
+    [[ -d $dir ]] || return 0
+    local path
+    for path in "$dir"/*.instpkg; do
+        [[ -e $path ]] || continue
+        print -r -- "${path:t:r}"
+    done
+}
+
+_bpt_repo_pkgids() {
+    local root=$1
+    command bpt -SV -R "$root" list --repository 2>/dev/null
+}
+
+_bpt_bbuild_repo_pkgids() {
+    local root=$1
+    _bpt_repo_pkgids "$root" | grep ':bbuild$'
+}
+
+_bpt_subcommand_from_words() {
+    local expect_value=0
+    local word
+    local i
+    for ((i = 2; i < CURRENT; i++)); do
+        word=${words[i]}
+        if (( expect_value )); then
+            expect_value=0
+            continue
+        fi
+        case "$word" in
+            --root-dir|--out-dir|--priv-key|--priv-key-passphrase-file|-R|-O|-P)
+                expect_value=1
+                continue
+                ;;
+            -R?*|-O?*|-P?*|--root-dir=*|--out-dir=*|--priv-key=*|--priv-key-passphrase-file=*)
+                continue
+                ;;
+        esac
+        case "$word" in
+            install|remove|upgrade|downgrade|apply|check|info|files|search|list|provides|sync|fetch|clean|build|make-repo|verify|sign)
+                print -r -- "$word"
+                return 0
+                ;;
+        esac
+    done
+    return 1
+}
+
+_bpt_global_opts=(
+    '-h[display help]'
+    '--help[display help]'
+    '-v[display version]'
+    '--version[display version]'
+    '-y[assume yes for prompts]'
+    '--yes[assume yes for prompts]'
+    '-D[dry run]'
+    '--dry-run[dry run]'
+    '-N[print network utility stderr]'
+    '--netutil-stderr[print network utility stderr]'
+    '-V[skip signature verification]'
+    '--skip-verify[skip signature verification]'
+    '-S[skip signing results]'
+    '--skip-sign[skip signing results]'
+    '-P+[private key file]:private key:_files'
+    '--priv-key+[private key file]:private key:_files'
+    '--priv-key-passphrase-file+[passphrase file]:passphrase file:_files'
+    '-O+[output directory]:output directory:_files -/'
+    '--out-dir+[output directory]:output directory:_files -/'
+    '-R+[root directory]:root directory:_files -/'
+    '--root-dir+[root directory]:root directory:_files -/'
+)
+
+_bpt() {
+    local root subcommand curcontext="$curcontext" state line
+    root=$(_bpt_root_from_words)
+    subcommand=$(_bpt_subcommand_from_words)
+
+    if [[ -z $subcommand ]]; then
+        _arguments -C ${_bpt_global_opts[@]} '1:command:(install remove upgrade downgrade apply check info files search list provides sync fetch clean build make-repo verify sign)'
+        return
+    fi
+
+    case "$subcommand" in
+        remove)
+            _arguments -C ${_bpt_global_opts[@]} \
+                '(-p --purge)'{-p,--purge}'[also remove modified configuration files]' \
+                '(-f --forget)'{-f,--forget}'[forget package metadata without removing files from disk]' \
+                '*:world entry:->world'
+            case $state in
+                world)
+                    compadd -- ${(@f)$(_bpt_world_entries "$root")}
+                    ;;
+            esac
+            ;;
+        check)
+            _arguments -C ${_bpt_global_opts[@]} \
+                '(-s --strict)'{-s,--strict}'[treat backup differences as errors]' \
+                '(-i --ignore-backup)'{-i,--ignore-backup}'[ignore backup differences]' \
+                '*:installed package:->installed'
+            case $state in
+                installed)
+                    compadd -- ${(@f)$(_bpt_installed_pkgids "$root")}
+                    ;;
+            esac
+            ;;
+        info|files)
+            _arguments -C ${_bpt_global_opts[@]} '*:package or file:->pkg_or_file'
+            case $state in
+                pkg_or_file)
+                    compadd -- ${(@f)$(_bpt_installed_pkgids "$root")}
+                    compadd -- ${(@f)$(_bpt_repo_pkgids "$root")}
+                    _files
+                    ;;
+            esac
+            ;;
+        install)
+            _arguments -C ${_bpt_global_opts[@]} \
+                '(-r --reinstall)'{-r,--reinstall}'[reinstall already installed package(s)]' \
+                '*:package or file:->pkg_or_file'
+            case $state in
+                pkg_or_file)
+                    compadd -- ${(@f)$(_bpt_repo_pkgids "$root")}
+                    _files -g '*.(bpt|bbuild)'
+                    ;;
+            esac
+            ;;
+        upgrade|downgrade)
+            _arguments -C ${_bpt_global_opts[@]} '*:package or file:->pkg_or_file'
+            case $state in
+                pkg_or_file)
+                    compadd -- ${(@f)$(_bpt_repo_pkgids "$root")}
+                    _files -g '*.(bpt|bbuild)'
+                    ;;
+            esac
+            ;;
+        fetch)
+            _arguments -C ${_bpt_global_opts[@]} '*:repository package:->repo_pkg'
+            case $state in
+                repo_pkg)
+                    compadd -- ${(@f)$(_bpt_repo_pkgids "$root")}
+                    ;;
+            esac
+            ;;
+        build)
+            _arguments -C ${_bpt_global_opts[@]} '(-a --arch)'{-a,--arch}'[target architecture]:arch:(host bbuild native noarch aarch64 armv7hl armv7l i586 i686 loongarch64 mips mips64 mips64el mipsel powerpc powerpc64 powerpc64le riscv64gc s390x x86_64)' '*:build definition or repo package:->bbuild'
+            case $state in
+                bbuild)
+                    compadd -- ${(@f)$(_bpt_bbuild_repo_pkgids "$root")}
+                    _files -g '*.bbuild'
+                    ;;
+            esac
+            ;;
+        sync)
+            _arguments -C ${_bpt_global_opts[@]} \
+                '(-f --force)'{-f,--force}'[refresh indexes even if they were checked recently]' \
+                '*:index file:_files -g *.(pkgidx|fileidx)'
+            ;;
+        clean)
+            _arguments -C ${_bpt_global_opts[@]} \
+                '(-p --packages)'{-p,--packages}'[remove cached packages]' \
+                '(-s --source)'{-s,--source}'[remove cached source files]'
+            ;;
+        verify)
+            _arguments -C ${_bpt_global_opts[@]} '*:file:_files'
+            ;;
+        sign)
+            _arguments -C ${_bpt_global_opts[@]} \
+                '(-n --needed)'{-n,--needed}'[only sign files which do not currently verify]' \
+                '*:file:_files'
+            ;;
+        search)
+            _arguments -C ${_bpt_global_opts[@]} '(-n --name)'{-n,--name}'[search names]' '(-d --description)'{-d,--description}'[search descriptions]' '(-i --installed)'{-i,--installed}'[search installed packages]' '(-r --repository)'{-r,--repository}'[search repository packages]' '1:regex:'
+            ;;
+        list)
+            _arguments -C ${_bpt_global_opts[@]} '(-i --installed)'{-i,--installed}'[list installed packages]' '(-r --repository)'{-r,--repository}'[list repository packages]' '(-x --explicit)'{-x,--explicit}'[list explicit packages]' '(-d --dependency)'{-d,--dependency}'[list dependency packages]'
+            ;;
+        provides)
+            _arguments -C ${_bpt_global_opts[@]} '(-i --installed)'{-i,--installed}'[search installed packages]' '(-r --repository)'{-r,--repository}'[search repository packages]' '1:regex:'
+            ;;
+        apply|make-repo)
+            _arguments -C ${_bpt_global_opts[@]}
+            ;;
+    esac
+}
+
+_bpt "$@"

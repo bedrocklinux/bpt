@@ -1,0 +1,21 @@
+mod apply;
+/// Per-command tests
+mod build;
+mod check;
+mod clean;
+pub mod common;
+mod downgrade;
+mod fetch;
+mod files;
+mod info;
+mod install;
+mod instpkg_testutil;
+mod list;
+mod make_repo;
+mod provides;
+mod remove;
+mod search;
+mod sign;
+mod sync;
+mod upgrade;
+mod verify;

@@ -1,0 +1,77 @@
+# Test infrastructure
+
+##  Running tests
+- Fast/default: `cargo test`
+- Include ignored (slow) tests: `cargo test -- --ignored`
+- Single test example: `cargo test --test main e2e::verify::verify_missing_signature -- --nocapture`
+
+## Layout
+
+- `main.rs`: test crate root.
+- `e2e/`: end-to-end test files.
+  - `common/`: shared end-to-end test harness.
+- `man_page/`: regression tests keeping `doc/man/bpt.1.scd` aligned with the live CLI surface and `doc/man/bpt.conf.5.scd` aligned with the shipped default config.
+- `smoke/`: lightweight CLI wiring and parser smoke tests.
+- `shell_completion/`: shell completion regression tests for bash, zsh, and fish.
+- `bbuilds/`: test bbuild files
+- `keys/`: test signing keys
+
+## How setup works
+
+1. `setup_test!()` is called in each test.
+2. On first use, common setup runs once (`COMMON_SETUP`):
+   - builds `.../e2e/common/etc/bpt` config
+   - links test keys from `tests/keys/`
+   - builds a temporary test repo from `tests/bbuilds/`
+   - launches HTTP server on an ephemeral localhost port
+3. For each test function, a clean per-test root is created under:
+   - `${CARGO_TARGET_TMPDIR}/e2e/<test_name>/`
+
+## Path/URL macros
+
+- `per_test_path!(...)`: files under the current test's isolated root.
+- `common_path!(...)`: files shared by all tests in this run.
+- `repo_path!(...)`: files in the generated shared repo.
+- `repo_url!(...)`: HTTP URL mapped to `repo_path!()` via local file server.
+
+## Runner macros
+
+- `run!(...)`: default path; runs `bpt` with `-S -V -y` plus test root/output.
+  - `-S`: skip signing
+  - `-V`: skip verification
+  - `-y`: non-interactive
+- `run_bpt_sign!(...)`: real signing with configured test private key.
+- `run_bpt_verify!(...)`: real signature verification
+- `run_bpt_make_repo!(...)`: helper for `make-repo` scenarios.
+- `run_bpt_make_repo_prompt!(prompt, ...)`: supports interactive prompt testing.
+
+## Important test conventions
+
+- Add `#[named]` (from `function_name`) to each test using `per_test_path!()`.
+  - The macro uses function name to isolate filesystem state.
+- Tests return command `stdout` on success and `stderr` on failure via helper macros.
+- Tests which decrypt a real private key are marked `#[ignore]` because they are very slow.
+
+## How to add a new command e2e test
+
+1. Create `tests/e2e/<command>.rs`.
+2. Enable it in `tests/e2e/mod.rs`.
+3. Call `setup_test!()` at start of each test.
+4. Use `run!` or a command-specific runner macro.
+5. Prefer asserting user-visible CLI behavior (`stdout`/`stderr`) and file side effects.
+
+## Smoke tests
+
+- Smoke tests live in `tests/smoke/`.
+- Use them for cheap coverage of CLI wiring, help output, parser failures, and broad
+  command-surface regressions.
+- Prefer one test that sweeps many commands over duplicating detailed behavioral assertions that
+  already belong in `e2e/`.
+
+## Shell completion tests
+
+- Shell completion tests live in `tests/shell_completion/`.
+- Use them for completion regressions that are easy to miss when changing `src/cli.rs`:
+  subcommand lists, command-specific flags, and dynamic completions like world entries or
+  installed package IDs.
+- Keep shared fixture and shell process logic in `tests/shell_completion/common.rs`.

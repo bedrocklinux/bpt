@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# Test package dependency
+
+# Package metadata
+pkgname="fakeblock-songs"
+pkgver="1.0.0"
+pkgdesc="dependency test package"
+homepage="N/A"
+license="MIT"
+depends=""
+
+# Build time information
+makearch="noarch"
+makedepends="fakeblock-song-gen>=1.0.0"
+
+build() {
+	mkdir -p "${pkgdir}/usr/share/fakeblock/songs"
+	fakeblock-song-gen > "${pkgdir}/usr/share/fakeblock/songs/main-theme"
+	fakeblock-song-gen > "${pkgdir}/usr/share/fakeblock/songs/top-banana"
+	fakeblock-song-gen > "${pkgdir}/usr/share/fakeblock/songs/boomerang"
+}

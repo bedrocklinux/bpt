@@ -1,0 +1,29 @@
+# Test keys used by e2e and signing/verification code
+
+## Purpose
+
+- These keys are intentionally non-secret and exist only for automated tests.
+- They support `bpt sign` / `bpt verify` coverage from `tests/e2e`.
+
+## Files
+
+- `test-key-password-is-bpt.key` / `.pub`: minisign keypair with password
+- `test-key-no-password.key` / `.pub`: keypair generated without password.
+- `test-key-password-is-bpt.passphrase`: passphrase file used for non-interactive tests.
+- `test-key-password-is-bpt.decrypted`: pre-decrypted private key for faster tests
+
+## How tests wire these in
+
+- `tests/e2e/aux/setup.rs` symlinks `.pub` into test `etc/bpt/keys/`.
+- The encrypted `.key` and `.passphrase` are symlinked into test `etc/bpt/private-keys/`.
+- `run_bpt_sign!` passes both key path and passphrase file so signing stays non-interactive.
+
+# Why the decrypted key exists
+
+- The minisign crate does not reliably support keys generated with `minisign -G -W` in this codebase.
+- Some tests avoid repeated private-key decryption overhead by using the pre-decrypted key artifact.
+
+# Safety
+
+- Do not use these keys outside local/CI tests.
+- Never copy this pattern for production key management.

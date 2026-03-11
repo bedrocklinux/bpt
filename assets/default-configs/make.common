@@ -1,0 +1,72 @@
+#!/hint/sh
+#
+# Various helper functions for building bpt packages.  These may be used within
+# `*.bbuild` files.
+
+bpt_git_latest_release_tag() {
+	local repo_url="${1}"
+	local release_tag_regex="${2}"
+	# Optional prefix (e.g. "v") to strip before numeric sorting and re-add to output.
+	# Note: prefix is used as a sed regex and is not escaped, so it must not contain
+	# sed special characters (e.g. `.`, `*`, `[`, etc.).
+	local prefix="${3:-}"
+
+	git ls-remote --tags "${repo_url}" | \
+		awk -F"/" '{print$NF}' | \
+		grep "${release_tag_regex}" | \
+		sed "s/^${prefix}//" | \
+		sort -t . -k1,1n -k2,2n -k3,3n -k4,4n -k5,5n | \
+		tail -n1 | \
+		sed "s/^/${prefix}/"
+}
+
+bpt_github_latest_release_tag() {
+	# https://docs.github.com/en/rest/releases/releases
+	#
+	# TODO: Note GitHub rate limits unauthenticated API hits, and so this can fail if it checks
+	# too many packages in quick succession.  Consider adding a GITHUB_TOKEN
+	
+	# Expected `url` package field, e.g.
+	# ```
+	# https://github.com/bedrocklinux/htop
+	# ```
+	local url="${1}"
+
+	local endpoint="$(echo "${url}" | sed 's,github.com,api.github.com/repos,')/releases/latest"
+	curl "${endpoint}" 2>/dev/null | jq -r .tag_name
+}
+
+bpt_portable_musl_gcc() {
+	# generate musl-gcc.specs which targets musl install location, either
+	# ${rootdir} or ${workdir}
+	local root_specs="${rootdir}/usr/${arch}/lib/musl-gcc.specs"
+	local work_specs="${workdir}/usr/${arch}/lib/musl-gcc.specs"
+	local old_specs
+	local target_prefix
+
+	if [ -r "${root_specs}" ]; then
+		old_specs="${root_specs}"
+		target_prefix="${rootdir}"
+	elif [ -r "${work_specs}" ]; then
+		old_specs="${work_specs}"
+		target_prefix="${workdir}"
+	else
+		echo "bpt_portable_musl_gcc: unable to find musl-gcc.specs in:" >&2
+		echo "  ${root_specs}" >&2
+		echo "  ${work_specs}" >&2
+		return 1
+	fi
+
+	local new_specs="$(pwd)/musl-gcc.specs"
+	sed -e "s,\\(/[^[:space:]\"]*\\),${target_prefix}\\1,g" "${old_specs}" > "${new_specs}"
+
+	# generate new musl-gcc with baked-in old-$CC which targets ${rootdir}
+	local new_muslgcc="$(pwd)/musl-gcc"
+	cat <<EOF > "${new_muslgcc}"
+#!/bin/sh
+exec "${CC}" "\${@}" -specs "${new_specs}"
+EOF
+	chmod +x "${new_muslgcc}"
+
+	echo "${new_muslgcc}"
+}

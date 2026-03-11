@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+# Test package that requires a build dependency from another target package.
+
+# Package metadata
+pkgname="aaa-consumer"
+pkgver="1.0.0"
+pkgdesc="consumer used to test build dependency ordering"
+homepage="N/A"
+license="MIT"
+depends=""
+
+# Build time information
+makearch="noarch"
+makedepends="zzz-helper>=1.0.0"
+
+build() {
+	mkdir -p "${pkgdir}/usr/share/aaa-consumer"
+	zzz-helper-gen > "${pkgdir}/usr/share/aaa-consumer/generated.txt"
+}

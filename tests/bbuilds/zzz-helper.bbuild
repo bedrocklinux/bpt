@@ -1,0 +1,24 @@
+#!/bin/sh
+#
+# Test package build dependency helper
+
+# Package metadata
+pkgname="zzz-helper"
+pkgver="1.0.0"
+pkgdesc="helper used to test build dependency ordering"
+homepage="N/A"
+license="MIT"
+depends=""
+
+# Build time information
+makearch="noarch"
+makedepends=""
+
+build() {
+	mkdir -p "${pkgdir}/usr/bin/"
+	cat <<EOF > "${pkgdir}/usr/bin/zzz-helper-gen"
+#!/bin/sh
+printf "generated-by-zzz-helper\\n"
+EOF
+	chmod a+rx "${pkgdir}/usr/bin/zzz-helper-gen"
+}

@@ -1,0 +1,38 @@
+//! (Sub)commands
+
+mod apply;
+mod build;
+mod check;
+mod clean;
+mod downgrade;
+mod fetch;
+mod files;
+mod info;
+mod install;
+mod list;
+mod make_repo;
+mod provides;
+mod remove;
+mod search;
+mod sign;
+mod sync;
+mod upgrade;
+mod verify;
+pub use apply::*;
+pub use build::*;
+pub use check::*;
+pub use clean::*;
+pub use downgrade::*;
+pub use fetch::*;
+pub use files::*;
+pub use info::*;
+pub use install::*;
+pub use list::*;
+pub use make_repo::*;
+pub use provides::*;
+pub use remove::*;
+pub use search::*;
+pub use sign::*;
+pub use sync::*;
+pub use upgrade::*;
+pub use verify::*;

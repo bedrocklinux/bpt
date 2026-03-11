@@ -1,0 +1,15 @@
+# Test bbuild files
+
+## Dependency relationships
+
+These have inter-dependencies to test the dependency code paths.
+
+- `fakeblock.bbuild` depends on `fakeblock-songs`
+- `fakeblock-songs.bbuild` makedepends on `fakeblock-song-gen`
+- `fakeblock-song-gen.bbuild` has no dependencies, runtime or otherwise
+
+## e2e test infrastructure relationship
+
+- e2e setup symlinks these files into a shared repository directory (`${CARGO_TARGET_TMPDIR}/e2e/common/repo`)
+- e2e setup generates repository indexes to access them via repository references
+- Tests can reference them either via `repo_path!(...)` for a file path or `repo_url!(...)` for networking.

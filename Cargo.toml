@@ -1,0 +1,59 @@
+[package]
+categories = ["command-line-utilities"]
+description = "Bedrock Linux package manager"
+keywords = ["bedrock-linux", "package-manager", "linux", "binary-packages", "bbuild"]
+edition = "2024"
+homepage = "https://bedrocklinux.org/bpt"
+license = "GPL-2.0-only"
+name = "bpt"
+readme = "README.md"
+repository = "https://github.com/bedrocklinux/bpt"
+rust-version = "1.85.0"
+version = "0.1.0"
+include = [
+	"/Cargo.toml",
+	"/Cargo.lock",
+	"/README.md",
+	"/build.rs",
+	"/src/**",
+	"/assets/default-configs/**",
+	"/doc/concepts.md",
+	"/doc/man/*",
+	"/contrib/completion/*",
+	"/contrib/util/*",
+]
+
+# optimize for size
+[profile.release]
+codegen-units = 1
+debug = false
+lto = true
+opt-level = "z"
+panic = "abort"
+strip = true
+
+# minisign is extremely slow when built unoptimized
+[profile.dev.package."*"]
+opt-level = "z"
+
+[dependencies]
+base64 = { version = "0.21", default-features = false, features = ["std"] }
+camino = { version = "1.1", default-features = false}
+clap = { version = "4.5", features = ["derive", "color"] }
+dirs = { version = "5.0", default-features = false }
+function_name = { version = "0.3.0", default-features = false }
+minisign = { version = "0.7.8", default-features = false }
+nix = { version = "0.25", default-features = false, features = ["fs", "process", "term", "user", "poll"] }
+paste = { version = "1.0.14", default-features = false }
+petgraph = { version = "0.8", default-features = false, features = ["std", "graphmap"] }
+regex-lite = { version = "0.1.5", default-features = false, features = ["std", "string"] }
+semver = { version = "1.0", default-features = false }
+sha2 = { version = "0.10", default-features = false, features = ["std"] }
+tar = { version = "0.4", default-features = false }
+thiserror = { version = "1.0", default-features = false }
+xattr = { version = "1.0", default-features = false }
+zeroize = "1.8.1"
+zstd = { version = "0.13", default-features = false  }
+
+[dev-dependencies]
+tiny_http = "0.12"
