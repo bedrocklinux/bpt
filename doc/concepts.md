@@ -126,20 +126,20 @@ specific hardware.  To do so:
 ```ini
 # Enable bbuild indexes
 # Provides instructions on how to build packages
-https://bedrocklinux.org/repos/bpt/0.8/main/bbuild.pkgidx
-https://bedrocklinux.org/repos/bpt/0.8/community/bbuild.pkgidx
+https://bedrocklinux.org/repo/0.8/main/bbuild.pkgidx
+https://bedrocklinux.org/repo/0.8/community/bbuild.pkgidx
 
 # Optionally, either enable or disable pkgidx indexes.
 # Disabling them ensures you always get from-source.
 # Enabling them provides a fall-back if you can't build a package.
-https://bedrocklinux.org/repos/bpt/0.8/main/x86_64.pkgidx
-https://bedrocklinux.org/repos/bpt/0.8/community/x86_64.pkgidx
+https://bedrocklinux.org/repo/0.8/main/x86_64.pkgidx
+https://bedrocklinux.org/repo/0.8/community/x86_64.pkgidx
 
 # Optionally, leave fileidx indexes.
 # Used for `bpt files` and `bpt provides` look-ups without needing to
 # build/install a package first.
-https://bedrocklinux.org/repos/bpt/0.8/main/x86_64.fileidx
-https://bedrocklinux.org/repos/bpt/0.8/community/x86_64.fileidx
+https://bedrocklinux.org/repo/0.8/main/x86_64.fileidx
+https://bedrocklinux.org/repo/0.8/community/x86_64.fileidx
 ```
 
 2. Configure `/etc/bpt/bpt.conf` to favor the "native" architecture
