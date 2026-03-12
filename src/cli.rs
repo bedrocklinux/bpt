@@ -137,6 +137,12 @@ enum Command {
         /// - [38;5;33mhttp(s) URL[0m to a [35mbuild definition[0m ([32m*.bbuild[0m)
         #[clap(verbatim_doc_comment, required = true)]
         pkgs: Vec<PkgPathUrlRepo>,
+        /// Search [35minstalled packages[0m
+        #[clap(short, long, help_heading = "Info options")]
+        installed: bool,
+        /// Search [35mrepository packages[0m
+        #[clap(short, long, help_heading = "Info options")]
+        repository: bool,
     },
     /// List files provided by [35mpackages[0m
     Files {
@@ -147,6 +153,12 @@ enum Command {
         /// - [38;5;33mhttp(s) URL[0m to a [35mbinary package[0m ([32m*.bpt[0m)
         #[clap(verbatim_doc_comment, required = true)]
         pkgs: Vec<BptPathUrlRepo>,
+        /// Search [35minstalled packages[0m
+        #[clap(short, long, help_heading = "Files options")]
+        installed: bool,
+        /// Search [35mrepository packages[0m
+        #[clap(short, long, help_heading = "Files options")]
+        repository: bool,
     },
     /// Search [35mpackages[0m
     // If no flags constrain search, searches everything.
@@ -369,8 +381,16 @@ impl Cli {
                 strict,
                 ignore_backup,
             } => check(common_flags, pkgs, strict, ignore_backup),
-            Command::Info { pkgs } => info(common_flags, pkgs),
-            Command::Files { pkgs } => files(common_flags, pkgs),
+            Command::Info {
+                pkgs,
+                installed,
+                repository,
+            } => info(common_flags, pkgs, installed, repository),
+            Command::Files {
+                pkgs,
+                installed,
+                repository,
+            } => files(common_flags, pkgs, installed, repository),
             Command::Search {
                 regex,
                 name,

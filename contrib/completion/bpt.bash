@@ -175,6 +175,9 @@ _bpt() {
             check)
                 _bpt_complete_from_list "$cur" -s --strict -i --ignore-backup -h --help -v --version -y --yes -D --dry-run -N --netutil-stderr -V --skip-verify -S --skip-sign -P --priv-key --priv-key-passphrase-file -O --out-dir -R --root-dir
                 ;;
+            info|files)
+                _bpt_complete_from_list "$cur" -i --installed -r --repository -h --help -v --version -y --yes -D --dry-run -N --netutil-stderr -V --skip-verify -S --skip-sign -P --priv-key --priv-key-passphrase-file -O --out-dir -R --root-dir
+                ;;
             search)
                 _bpt_complete_from_list "$cur" -n --name -d --description -i --installed -r --repository -h --help -v --version -y --yes -D --dry-run -N --netutil-stderr -V --skip-verify -S --skip-sign -P --priv-key --priv-key-passphrase-file -O --out-dir -R --root-dir
                 ;;

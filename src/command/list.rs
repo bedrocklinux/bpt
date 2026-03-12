@@ -14,10 +14,9 @@ pub fn list(
 
     let mut pkgs = Vec::new();
 
-    // No flags indicate all packages desired
     if !repository && !installed && !explicit && !dependency {
-        repository = true;
         installed = true;
+        repository = true;
         // explicit and dependency are sub-categories of and thus redundant with `installed`.
     }
     if repository {

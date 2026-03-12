@@ -148,7 +148,10 @@ _bpt() {
             esac
             ;;
         info|files)
-            _arguments -C ${_bpt_global_opts[@]} '*:package or file:->pkg_or_file'
+            _arguments -C ${_bpt_global_opts[@]} \
+                '(-i --installed)'{-i,--installed}'[search installed packages]' \
+                '(-r --repository)'{-r,--repository}'[search repository packages]' \
+                '*:package or file:->pkg_or_file'
             case $state in
                 pkg_or_file)
                     compadd -- ${(@f)$(_bpt_installed_pkgids "$root")}

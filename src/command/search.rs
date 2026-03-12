@@ -24,9 +24,9 @@ pub fn search(
         name = true;
         description = true;
     }
-    if !repository && !installed {
-        repository = true;
+    if !installed && !repository {
         installed = true;
+        repository = true;
     }
     if repository {
         pkgs.extend(repository_pkgs.pkgid_pkgdesc())

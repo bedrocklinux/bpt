@@ -20,9 +20,9 @@ pub fn provides(
 
     let mut pkgs = BTreeMap::<PkgId, Vec<Utf8PathBuf>>::new();
     // No filter flags indicates all are requested
-    if !repository && !installed {
-        repository = true;
+    if !installed && !repository {
         installed = true;
+        repository = true;
     }
     if installed {
         for (pkgid, paths) in installed_pkgs.pkgid_paths() {

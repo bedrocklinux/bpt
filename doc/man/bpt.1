@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "bpt" "1" "2026-03-11"
+.TH "bpt" "1" "2026-03-12"
 .PP
 .SH NAME
 .PP
@@ -189,20 +189,44 @@ Ignore backup file content differences.\&
 .RE
 .SS info
 .PP
-\fBbpt\fR info <pkg>.\&.\&.\&
+\fBbpt\fR info [\fIoptions\fR] <pkg>.\&.\&.\&
 .PP
 Describe packages.\&
 .PP
 Arguments may be installed package identifiers, repository package identifiers, package paths, or package URLs.\&
 .PP
+Options:
+.PP
+\fB-i\fR, \fB--installed\fR
+.RS 4
+Search installed packages.\&
+.PP
+.RE
+\fB-r\fR, \fB--repository\fR
+.RS 4
+Search repository packages.\&
+.PP
+.RE
 .SS files
 .PP
-\fBbpt\fR files <pkg>.\&.\&.\&
+\fBbpt\fR files [\fIoptions\fR] <pkg>.\&.\&.\&
 .PP
 List files provided by packages.\&
 .PP
 Arguments may be installed package identifiers, repository binary package identifiers, package paths, or package URLs to binary packages.\&
 .PP
+Options:
+.PP
+\fB-i\fR, \fB--installed\fR
+.RS 4
+Search installed packages.\&
+.PP
+.RE
+\fB-r\fR, \fB--repository\fR
+.RS 4
+Search repository packages.\&
+.PP
+.RE
 .SS search
 .PP
 \fBbpt\fR search [\fIoptions\fR] <regex>

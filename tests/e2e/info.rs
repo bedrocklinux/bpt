@@ -71,6 +71,18 @@ fn info_missing_pkg_errors() {
 
 #[test]
 #[named]
+fn info_installed_flag_restricts_partids_to_installed_packages() {
+    setup_test!();
+
+    let result = run!("info", "--installed", "fakeblock");
+    assert!(result.is_err());
+    let stderr = result.unwrap_err();
+    assert!(stderr.contains("Unable to locate installed package"));
+    assert!(stderr.contains("fakeblock"));
+}
+
+#[test]
+#[named]
 fn info_by_installed_pkgid() {
     setup_test!();
 
@@ -115,6 +127,55 @@ fn info_by_pkgid_prefers_installed_metadata_over_repository_metadata() {
     let repo_stdout = run!("info", repo_path!("fakeblock@1.0.0:noarch.bpt")).unwrap();
     assert!(repo_stdout.contains("just a boolean driven aggregation"));
     assert!(!repo_stdout.contains("installed-only fakeblock variant"));
+}
+
+#[test]
+#[named]
+fn info_repository_flag_prefers_repository_metadata_for_partids() {
+    setup_test!();
+
+    write_modified_bbuild(
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
+        &[(
+            "pkgdesc=\"just a boolean driven aggregation, really, of what programmers call hacker traps\"",
+            "pkgdesc=\"installed-only fakeblock variant\"",
+        )],
+    );
+    let _ = run!("install", per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
+
+    let stdout = run!("info", "--repository", "fakeblock@1.0.0").unwrap();
+    assert!(stdout.contains("just a boolean driven aggregation"));
+    assert!(!stdout.contains("installed-only fakeblock variant"));
+}
+
+#[test]
+#[named]
+fn info_both_flags_still_prefers_installed_metadata_for_partids() {
+    setup_test!();
+
+    write_modified_bbuild(
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
+        &[(
+            "pkgdesc=\"just a boolean driven aggregation, really, of what programmers call hacker traps\"",
+            "pkgdesc=\"installed-only fakeblock variant\"",
+        )],
+    );
+    let _ = run!("install", per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
+
+    let stdout = run!("info", "--installed", "--repository", "fakeblock@1.0.0").unwrap();
+    assert!(stdout.contains("installed-only fakeblock variant"));
+}
+
+#[test]
+#[named]
+fn info_flags_do_not_affect_path_inputs() {
+    setup_test!();
+
+    let stdout = run!("info", "--repository", repo_path!("fakeblock@1.0.0.bbuild")).unwrap();
+    assert!(stdout.contains("Name:         fakeblock"));
+    assert!(stdout.contains("Architecture: bbuild"));
 }
 
 #[test]

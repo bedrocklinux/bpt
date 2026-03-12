@@ -136,19 +136,35 @@ Options:
 
 ## info
 
-*bpt* info <pkg>...
+*bpt* info [_options_] <pkg>...
 
 Describe packages.
 
 Arguments may be installed package identifiers, repository package identifiers, package paths, or package URLs.
 
+Options:
+
+*-i*, *--installed*
+	Search installed packages.
+
+*-r*, *--repository*
+	Search repository packages.
+
 ## files
 
-*bpt* files <pkg>...
+*bpt* files [_options_] <pkg>...
 
 List files provided by packages.
 
 Arguments may be installed package identifiers, repository binary package identifiers, package paths, or package URLs to binary packages.
+
+Options:
+
+*-i*, *--installed*
+	Search installed packages.
+
+*-r*, *--repository*
+	Search repository packages.
 
 ## search
 

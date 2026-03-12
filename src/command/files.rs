@@ -3,7 +3,12 @@ use crate::{
 };
 use camino::Utf8PathBuf;
 
-pub fn files(flags: CommonFlags, pkgs: Vec<BptPathUrlRepo>) -> Result<String, Err> {
+pub fn files(
+    flags: CommonFlags,
+    pkgs: Vec<BptPathUrlRepo>,
+    mut installed: bool,
+    mut repository: bool,
+) -> Result<String, Err> {
     let bpt_conf = &BptConf::from_root_path(&flags.root_dir)?;
     let pubkeys = &PublicKeys::from_common_flags(&flags)?;
     let netutil = &NetUtil::new(bpt_conf, flags.netutil_stderr);
@@ -12,6 +17,11 @@ pub fn files(flags: CommonFlags, pkgs: Vec<BptPathUrlRepo>) -> Result<String, Er
     let installed_pkgs = &InstalledPkgs::from_root_path_ro(&flags.root_dir)?;
     let archs = &bpt_conf.general.default_archs;
     let pkg_files = PkgFiles::from_root_path(&flags.root_dir, pubkeys)?;
+
+    if !installed && !repository {
+        installed = true;
+        repository = true;
+    }
 
     let mut pkg_paths: Vec<(PkgId, Vec<Utf8PathBuf>)> = Vec::new();
     for pkg in &pkgs {
@@ -24,30 +34,15 @@ pub fn files(flags: CommonFlags, pkgs: Vec<BptPathUrlRepo>) -> Result<String, Er
                 let bpt = url.download(netutil, &mut pkgcache, pubkeys, None)?;
                 pkg_paths.push((bpt.pkgid().to_owned(), bpt.filepaths().to_owned()))
             }
-            BptPathUrlRepo::Repo(partid) => {
-                if let Some(instpkg) = installed_pkgs.best_match(partid, archs) {
-                    pkg_paths.push((
-                        instpkg.pkgid().clone(),
-                        instpkg.paths().map(|p| p.to_path_buf()).collect(),
-                    ));
-                    continue;
-                }
-
-                if let Some(pkginfo) = repository_pkgs.best_pkg_match(partid, archs) {
-                    if let Some((pkgid, paths)) = pkg_files
-                        .pkgid_paths()
-                        .find(|(pkgid, _)| *pkgid == pkginfo.pkgid())
-                    {
-                        pkg_paths.push((
-                            pkgid.to_owned(),
-                            paths.iter().map(|p| p.to_path_buf()).collect(),
-                        ));
-                        continue;
-                    }
-                }
-
-                return Err(Err::UnableToLocateAvailablePkg((**partid).clone()));
-            }
+            BptPathUrlRepo::Repo(partid) => pkg_paths.push(resolve_partid_paths(
+                partid,
+                installed,
+                repository,
+                installed_pkgs,
+                repository_pkgs,
+                &pkg_files,
+                archs,
+            )?),
         }
     }
 
@@ -72,4 +67,41 @@ pub fn files(flags: CommonFlags, pkgs: Vec<BptPathUrlRepo>) -> Result<String, Er
     // This is likely to be parsed by other programs. Do not complicate output by printing a
     // success message.
     Ok(String::new())
+}
+
+fn resolve_partid_paths(
+    partid: &crate::metadata::PartId,
+    installed: bool,
+    repository: bool,
+    installed_pkgs: &InstalledPkgs,
+    repository_pkgs: &RepositoryPkgs,
+    pkg_files: &PkgFiles,
+    archs: &[crate::metadata::Arch],
+) -> Result<(PkgId, Vec<Utf8PathBuf>), Err> {
+    if installed
+        && let Some(instpkg) = installed_pkgs.best_match(partid, archs)
+    {
+        return Ok((
+            instpkg.pkgid().clone(),
+            instpkg.paths().map(|p| p.to_path_buf()).collect(),
+        ));
+    }
+
+    if repository
+        && let Some(pkginfo) = repository_pkgs.best_pkg_match(partid, archs)
+        && let Some((pkgid, paths)) = pkg_files
+            .pkgid_paths()
+            .find(|(pkgid, _)| *pkgid == pkginfo.pkgid())
+    {
+        return Ok((
+            pkgid.to_owned(),
+            paths.iter().map(|p| p.to_path_buf()).collect(),
+        ));
+    }
+
+    if installed && !repository {
+        Err(Err::UnableToLocateInstalledPkg(partid.clone()))
+    } else {
+        Err(Err::UnableToLocateAvailablePkg(partid.clone()))
+    }
 }

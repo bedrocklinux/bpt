@@ -1,6 +1,11 @@
 use crate::{cli::*, collection::*, constant::*, error::*, file::*, io::*, location::*};
 
-pub fn info(flags: CommonFlags, pkgs: Vec<PkgPathUrlRepo>) -> Result<String, Err> {
+pub fn info(
+    flags: CommonFlags,
+    pkgs: Vec<PkgPathUrlRepo>,
+    mut installed: bool,
+    mut repository: bool,
+) -> Result<String, Err> {
     let bpt_conf = &BptConf::from_root_path(&flags.root_dir)?;
     let pubkeys = &PublicKeys::from_common_flags(&flags)?;
     let netutil = &NetUtil::new(bpt_conf, flags.netutil_stderr);
@@ -9,6 +14,11 @@ pub fn info(flags: CommonFlags, pkgs: Vec<PkgPathUrlRepo>) -> Result<String, Err
     let installed_pkgs = &InstalledPkgs::from_root_path_ro(&flags.root_dir)?;
     let repository_pkgs = &RepositoryPkgs::from_root_path(&flags.root_dir, pubkeys)?;
     let archs = &bpt_conf.general.default_archs;
+
+    if !installed && !repository {
+        installed = true;
+        repository = true;
+    }
 
     let mut pkginfos = Vec::new();
     for pkg in &pkgs {
@@ -27,12 +37,14 @@ pub fn info(flags: CommonFlags, pkgs: Vec<PkgPathUrlRepo>) -> Result<String, Err
                 )?
                 .pkginfo()
                 .clone(),
-            PkgPathUrlRepo::Repo(partid) => installed_pkgs
-                .best_match(partid, archs)
-                .map(|pkg| pkg.pkginfo())
-                .or_else(|| repository_pkgs.best_pkg_match(partid, archs))
-                .ok_or_else(|| Err::UnableToLocateAvailablePkg(partid.clone()))?
-                .clone(),
+            PkgPathUrlRepo::Repo(partid) => resolve_partid_pkginfo(
+                partid,
+                installed,
+                repository,
+                installed_pkgs,
+                repository_pkgs,
+                archs,
+            )?,
         };
         pkginfos.push(pkginfo);
     }
@@ -44,4 +56,31 @@ pub fn info(flags: CommonFlags, pkgs: Vec<PkgPathUrlRepo>) -> Result<String, Err
     // This is likely to be parsed by other programs.  Do not complicate output by printing a
     // success message.
     Ok(String::new())
+}
+
+fn resolve_partid_pkginfo(
+    partid: &crate::metadata::PartId,
+    installed: bool,
+    repository: bool,
+    installed_pkgs: &InstalledPkgs,
+    repository_pkgs: &RepositoryPkgs,
+    archs: &[crate::metadata::Arch],
+) -> Result<crate::metadata::PkgInfo, Err> {
+    if installed
+        && let Some(instpkg) = installed_pkgs.best_match(partid, archs)
+    {
+        return Ok(instpkg.pkginfo().clone());
+    }
+
+    if repository
+        && let Some(pkginfo) = repository_pkgs.best_pkg_match(partid, archs)
+    {
+        return Ok(pkginfo.clone());
+    }
+
+    if installed && !repository {
+        Err(Err::UnableToLocateInstalledPkg(partid.clone()))
+    } else {
+        Err(Err::UnableToLocateAvailablePkg(partid.clone()))
+    }
 }
