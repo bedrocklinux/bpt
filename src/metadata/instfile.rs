@@ -47,6 +47,13 @@ impl InstFile {
         format!("{}{}{}", Color::Deemphasize, label, Color::Default)
     }
 
+    fn can_keep_directory_remove_error(error: &std::io::Error) -> bool {
+        matches!(
+            error.kind(),
+            ErrorKind::NotFound | ErrorKind::DirectoryNotEmpty | ErrorKind::ResourceBusy
+        )
+    }
+
     /// Check if the on-disk file content differs from the stored checksum/target.
     ///
     /// Returns `false` for directories, missing files, or files matching their stored content.
@@ -80,11 +87,11 @@ impl InstFile {
         let path = root.join(&self.path);
         match self.entry_type {
             InstFileType::Directory => {
-                // Multiple packages can share a directory.  Keep non-empty directories.
+                // Multiple packages can share a directory. Keep directories the kernel reports as
+                // still in use, including Bedrock mount points such as `/etc`.
                 match std::fs::remove_dir(&path) {
                     Ok(_) => Ok(()),
-                    Result::Err(e) if e.kind() == ErrorKind::NotFound => Ok(()),
-                    Result::Err(e) if e.kind() == ErrorKind::DirectoryNotEmpty => Ok(()),
+                    Result::Err(e) if Self::can_keep_directory_remove_error(&e) => Ok(()),
                     Result::Err(e) => Err(Err::Remove(path.to_string(), e)),
                 }
             }
@@ -401,5 +408,18 @@ mod tests {
             InstFileType::RegFile(RegFile::from_sha256(sha256_of(b"anything"))),
         );
         entry.remove(root.as_path()).unwrap();
+    }
+
+    #[test]
+    fn keep_directory_remove_error_kinds_include_bedrock_mountpoints() {
+        assert!(InstFile::can_keep_directory_remove_error(&std::io::Error::from(
+            ErrorKind::NotFound
+        )));
+        assert!(InstFile::can_keep_directory_remove_error(&std::io::Error::from(
+            ErrorKind::DirectoryNotEmpty
+        )));
+        assert!(InstFile::can_keep_directory_remove_error(&std::io::Error::from(
+            ErrorKind::ResourceBusy
+        )));
     }
 }
