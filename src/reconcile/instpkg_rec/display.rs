@@ -93,20 +93,15 @@ impl ReplaceOp {
             Color::Default,
             self.to.pkgid().color()
         )?;
-        let mut meta = vec![format!("from {}", self.from.color())];
+        write!(f, " {}({}from {}", Color::Deemphasize, Color::Deemphasize, self.from.color())?;
+        write!(f, "{}", Color::Deemphasize)?;
         if let Some(world_change) = &self.world_change {
-            meta.push(world_change.to_string());
+            write!(f, "; {world_change}")?;
         }
         if self.to.needs_build() {
-            meta.push("build".to_string());
+            write!(f, "; build")?;
         }
-        write!(
-            f,
-            " {}({}){}",
-            Color::Deemphasize,
-            meta.join("; "),
-            Color::Default
-        )?;
+        write!(f, "){}", Color::Default)?;
         writeln!(f)
     }
 }
@@ -175,5 +170,72 @@ impl fmt::Display for WorldChange {
                 write!(f, "world {} -> {to}", Self::describe_entries(from))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::marshalling::{FieldList, FieldStr, FromFieldStr};
+    use crate::metadata::{
+        Arch, Backup, Depends, Homepage, License, MakeArchs, MakeBins, MakeDepends, PkgDesc,
+        PkgId, PkgInfo, PkgName, PkgVer, RepoPath,
+    };
+    use crate::reconcile::instpkg_rec::TargetSource;
+
+    fn make_pkginfo(pkgname: &str, pkgver: &str, arch: Arch) -> PkgInfo {
+        PkgInfo {
+            pkgid: PkgId::new(
+                PkgName::try_from(pkgname).unwrap(),
+                PkgVer::try_from(pkgver).unwrap(),
+                arch,
+            ),
+            pkgdesc: PkgDesc::from_field_str(FieldStr::try_from("test package").unwrap()).unwrap(),
+            homepage: Homepage::from_field_str(FieldStr::try_from("https://example.com").unwrap())
+                .unwrap(),
+            license: License::from_field_str(FieldStr::try_from("MIT").unwrap()).unwrap(),
+            backup: Backup::new(),
+            depends: Depends::new(),
+            makearchs: MakeArchs::new(),
+            makebins: MakeBins::new(),
+            makedepends: MakeDepends::new(),
+            repopath: RepoPath::empty(),
+        }
+    }
+
+    #[test]
+    fn replace_op_reapplies_deemphasize_after_colored_from_pkgid() {
+        let plan = InstPkgPlan {
+            upgrade: vec![ReplaceOp {
+                from: PkgId::new(
+                    PkgName::try_from("old").unwrap(),
+                    PkgVer::try_from("1.0.0").unwrap(),
+                    Arch::noarch,
+                ),
+                to: TargetSource::Installed(make_pkginfo("new", "2.0.0", Arch::noarch)),
+                world_change: Some(WorldChange::Add(PartId::new(
+                    PkgName::try_from("new").unwrap(),
+                    None,
+                    Some(Arch::noarch),
+                ))),
+            }],
+            ..Default::default()
+        };
+
+        let rendered = format!("{plan}");
+        let expected = format!(
+            "{}from {}{}; world add new:noarch){}",
+            Color::Deemphasize,
+            PkgId::new(
+                PkgName::try_from("old").unwrap(),
+                PkgVer::try_from("1.0.0").unwrap(),
+                Arch::noarch,
+            )
+            .color(),
+            Color::Deemphasize,
+            Color::Default
+        );
+
+        assert!(rendered.contains(&expected), "{rendered:?}");
     }
 }
