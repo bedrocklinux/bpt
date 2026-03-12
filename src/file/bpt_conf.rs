@@ -1,4 +1,11 @@
-use crate::{constant::*, error::*, io::*, location::RootDir, metadata::*, str::*};
+use crate::{
+    constant::*,
+    error::*,
+    io::*,
+    location::{RootDir, adjust_bedrock_local_path_for_prefix, current_bedrock_prefix},
+    metadata::*,
+    str::*,
+};
 use camino::Utf8PathBuf;
 use nix::unistd::{Group, User, geteuid};
 use std::{io::ErrorKind, str::FromStr};
@@ -175,11 +182,23 @@ impl BptConf {
                     format!("group `{group_name}` was not found"),
                 )
             })?;
+        let home_dir = Utf8PathBuf::from_path_buf(user.dir.clone()).map_err(|path| {
+            Err::InputFieldInvalid(
+                "build unprivileged-user",
+                format!(
+                    "user `{user_name}` has a non-UTF-8 home directory `{}`",
+                    path.display()
+                ),
+            )
+        })?;
+        let home_dir =
+            adjust_bedrock_local_path_for_prefix(&home_dir, current_bedrock_prefix()?.as_deref());
 
         Ok(Some(ProcessCredentials {
             user_name,
             uid: user.uid,
             gid: group.gid,
+            home_dir: home_dir.into_std_path_buf(),
         }))
     }
 
