@@ -121,6 +121,7 @@ fn make_repo_prompt_accept_continues() {
 
     let stdout = run_bpt_make_repo_prompt!(b"y\n", "-O", per_test_path!()).unwrap();
     assert!(stdout.contains("Continuing will:"));
+    assert!(stdout.contains("\n\nUpdated repository files from 1 *.bbuild file(s)"));
     assert!(stdout.contains("Updated repository files from 1 *.bbuild file(s)"));
     assert!(Path::new(per_test_path!("fakeblock@1.0.0:noarch.bpt")).exists());
 }
@@ -202,7 +203,8 @@ fn make_repo_dry_run_should_not_write_artifacts() {
     )
     .unwrap();
 
-    let _ = run_bpt_make_repo!("-D", "-O", per_test_path!()).unwrap();
+    let stdout = run_bpt_make_repo!("-D", "-O", per_test_path!()).unwrap();
+    assert!(stdout.contains("\n\nDry ran make-repo of 1 *.bbuild file(s)"));
 
     assert!(!Path::new(per_test_path!("fakeblock@1.0.0:noarch.bpt")).exists());
     assert!(!Path::new(per_test_path!("noarch.pkgidx")).exists());

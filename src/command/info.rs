@@ -66,15 +66,11 @@ fn resolve_partid_pkginfo(
     repository_pkgs: &RepositoryPkgs,
     archs: &[crate::metadata::Arch],
 ) -> Result<crate::metadata::PkgInfo, Err> {
-    if installed
-        && let Some(instpkg) = installed_pkgs.best_match(partid, archs)
-    {
+    if installed && let Some(instpkg) = installed_pkgs.best_match(partid, archs) {
         return Ok(instpkg.pkginfo().clone());
     }
 
-    if repository
-        && let Some(pkginfo) = repository_pkgs.best_pkg_match(partid, archs)
-    {
+    if repository && let Some(pkginfo) = repository_pkgs.best_pkg_match(partid, archs) {
         return Ok(pkginfo.clone());
     }
 

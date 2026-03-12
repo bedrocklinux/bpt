@@ -15,6 +15,7 @@ fn sync_dry_run_should_not_write_indexes() {
     let stdout = run!("sync", "-D", repo_path!("noarch.pkgidx")).unwrap();
     assert!(stdout.contains("Would have:"));
     assert!(stdout.contains("Initialize"));
+    assert!(stdout.contains("\n\nDry ran synchronization of 1 index(es)"));
     assert!(stdout.contains("Dry ran synchronization of 1 index(es)"));
 
     // Dry run should create the directories but not write index files
@@ -53,6 +54,7 @@ fn sync_writes_single_index() {
     let source = repo_path!("noarch.pkgidx");
     let stdout = run!("sync", source).unwrap();
     assert!(stdout.contains("Synchronized"));
+    assert!(stdout.contains("\n\nSynchronized"));
     assert!(stdout.contains(source));
     assert_eq!(count_index_files(per_test_path!("var/lib/bpt/pkgidx")), 1);
     assert_eq!(count_index_files(per_test_path!("var/lib/bpt/fileidx")), 0);

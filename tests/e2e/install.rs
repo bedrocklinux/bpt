@@ -72,6 +72,7 @@ fn install_dry_run_does_not_mutate_state() {
     let stdout = run!("install", "-D", "fakeblock").unwrap();
     assert!(stdout.contains("Would have:"));
     assert!(stdout.contains("Install"));
+    assert!(stdout.contains("\n\nDry ran updated installed package set"));
     assert!(stdout.contains("Dry ran updated installed package set"));
 
     assert!(!Path::new(per_test_path!("etc/bpt/world")).exists());
@@ -259,7 +260,9 @@ fn install_backup_file_difference_creates_bptnew() {
 
     let stdout = run!("install", per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Install"));
+    assert!(stdout.contains("\n\nCreated"));
     assert!(stdout.contains("Created"));
+    assert!(stdout.contains(".bptnew\n\nUpdated installed package set"));
     assert!(stdout.contains("etc/fakeblock.conf.bptnew"));
     assert!(Path::new(per_test_path!("etc/fakeblock.conf.bptnew")).exists());
 }

@@ -231,10 +231,7 @@ fn info_bbuild_with_invalid_makebin_group_alias_errors() {
         &[("makedepends=\"\"", "makedepends=\"\"\nmakebins=\"@bogus\"")],
     );
 
-    let result = run!(
-        "info",
-        per_test_path!("fakeblock@1.0.0.bbuild")
-    );
+    let result = run!("info", per_test_path!("fakeblock@1.0.0.bbuild"));
     assert!(result.is_err());
     let stderr = result.unwrap_err();
     assert!(stderr.contains("contains invalid MakeBin field"));

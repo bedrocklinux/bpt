@@ -39,6 +39,7 @@ pub fn upgrade(flags: CommonFlags, pkgs: Vec<PkgPathUrlRepo>) -> Result<String, 
 
     if flags.dry_run {
         println!("{}Would have:{}\n{plan}", Color::Warn, Color::Default);
+        println!();
         return Ok(format!("Dry ran {}", plan.summary().to_lowercase()));
     }
 

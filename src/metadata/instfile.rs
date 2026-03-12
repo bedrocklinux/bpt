@@ -43,8 +43,17 @@ impl InstFile {
         format!("{}{}{}", Color::Warn, label, Color::Default)
     }
 
-    fn color_meta(label: &str) -> String {
-        format!("{}{}{}", Color::Deemphasize, label, Color::Default)
+    fn color_check_detail<T: std::fmt::Display, U: std::fmt::Display>(
+        expected: T,
+        found: U,
+    ) -> String {
+        format!(
+            "{}(expected {}; found {}){}",
+            Color::Deemphasize,
+            expected,
+            found,
+            Color::Default
+        )
     }
 
     fn can_keep_directory_remove_error(error: &std::io::Error) -> bool {
@@ -134,13 +143,10 @@ impl InstFile {
             if found_mode != self.mode {
                 issues.push(InstFileCheckIssue {
                     message: format!(
-                        "{} mode: {} ({} {}; {} {})",
+                        "{} mode: {} {}",
                         Self::color_warn("Incorrect"),
                         Self::color_path(&path),
-                        Self::color_meta("expected"),
-                        self.mode,
-                        Self::color_meta("found"),
-                        found_mode
+                        Self::color_check_detail(self.mode, found_mode)
                     ),
                     is_content_difference: false,
                 });
@@ -151,13 +157,10 @@ impl InstFile {
         if found_uid != self.uid {
             issues.push(InstFileCheckIssue {
                 message: format!(
-                    "{} uid: {} ({} {}; {} {})",
+                    "{} uid: {} {}",
                     Self::color_warn("Incorrect"),
                     Self::color_path(&path),
-                    Self::color_meta("expected"),
-                    self.uid,
-                    Self::color_meta("found"),
-                    found_uid
+                    Self::color_check_detail(self.uid, found_uid)
                 ),
                 is_content_difference: false,
             });
@@ -167,13 +170,10 @@ impl InstFile {
         if found_gid != self.gid {
             issues.push(InstFileCheckIssue {
                 message: format!(
-                    "{} gid: {} ({} {}; {} {})",
+                    "{} gid: {} {}",
                     Self::color_warn("Incorrect"),
                     Self::color_path(&path),
-                    Self::color_meta("expected"),
-                    self.gid,
-                    Self::color_meta("found"),
-                    found_gid
+                    Self::color_check_detail(self.gid, found_gid)
                 ),
                 is_content_difference: false,
             });
@@ -208,13 +208,10 @@ impl InstFile {
                 if *expect != actual {
                     issues.push(InstFileCheckIssue {
                         message: format!(
-                            "{} sha256: {} ({} {}; {} {})",
+                            "{} sha256: {} {}",
                             Self::color_warn("Incorrect"),
                             Self::color_path(&path),
-                            Self::color_meta("expected"),
-                            expect,
-                            Self::color_meta("found"),
-                            actual
+                            Self::color_check_detail(expect, actual)
                         ),
                         is_content_difference: true,
                     });
@@ -238,13 +235,10 @@ impl InstFile {
                 if *expect != actual {
                     issues.push(InstFileCheckIssue {
                         message: format!(
-                            "{} symlink: {} ({} {}; {} {})",
+                            "{} symlink: {} {}",
                             Self::color_warn("Incorrect"),
                             Self::color_path(&path),
-                            Self::color_meta("expected"),
-                            expect,
-                            Self::color_meta("found"),
-                            actual
+                            Self::color_check_detail(expect, actual)
                         ),
                         is_content_difference: true,
                     });
@@ -412,14 +406,26 @@ mod tests {
 
     #[test]
     fn keep_directory_remove_error_kinds_include_bedrock_mountpoints() {
-        assert!(InstFile::can_keep_directory_remove_error(&std::io::Error::from(
-            ErrorKind::NotFound
-        )));
-        assert!(InstFile::can_keep_directory_remove_error(&std::io::Error::from(
-            ErrorKind::DirectoryNotEmpty
-        )));
-        assert!(InstFile::can_keep_directory_remove_error(&std::io::Error::from(
-            ErrorKind::ResourceBusy
-        )));
+        assert!(InstFile::can_keep_directory_remove_error(
+            &std::io::Error::from(ErrorKind::NotFound)
+        ));
+        assert!(InstFile::can_keep_directory_remove_error(
+            &std::io::Error::from(ErrorKind::DirectoryNotEmpty)
+        ));
+        assert!(InstFile::can_keep_directory_remove_error(
+            &std::io::Error::from(ErrorKind::ResourceBusy)
+        ));
+    }
+
+    #[test]
+    fn check_detail_keeps_trailing_paren_deemphasized() {
+        let rendered = InstFile::color_check_detail("expected-value", "found-value");
+        let expected = format!(
+            "{}(expected expected-value; found found-value){}",
+            Color::Deemphasize,
+            Color::Default
+        );
+
+        assert_eq!(rendered, expected);
     }
 }

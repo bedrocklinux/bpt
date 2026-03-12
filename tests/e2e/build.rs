@@ -61,7 +61,12 @@ fn build_multiple_from_paths() {
 fn build_arch_native_rejected() {
     setup_test!();
 
-    let result = run!("build", "-a", "native", repo_path!("fakeblock@1.0.0.bbuild"));
+    let result = run!(
+        "build",
+        "-a",
+        "native",
+        repo_path!("fakeblock@1.0.0.bbuild")
+    );
     assert!(result.is_err());
     let stderr = result.unwrap_err();
     assert!(stderr.contains("cannot output non-portable `:native` packages"));
@@ -72,7 +77,12 @@ fn build_arch_native_rejected() {
 fn build_arch_bbuild_rejected() {
     setup_test!();
 
-    let result = run!("build", "-a", "bbuild", repo_path!("fakeblock@1.0.0.bbuild"));
+    let result = run!(
+        "build",
+        "-a",
+        "bbuild",
+        repo_path!("fakeblock@1.0.0.bbuild")
+    );
     assert!(result.is_err());
     let stderr = result.unwrap_err();
     assert!(stderr.contains("`bbuild` is a package build definition"));
@@ -165,6 +175,7 @@ fn build_dry_run_from_path() {
 
     let stdout = run!("build", "-D", repo_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Would build fakeblock@1.0.0:noarch"));
+    assert!(stdout.contains("Would build fakeblock@1.0.0:noarch\n\nDry ran build of 1 package(s)"));
     assert!(stdout.contains("Dry ran build of 1 package(s)"));
     assert!(!Path::new(per_test_path!("fakeblock@1.0.0:noarch.bpt")).exists());
 }
@@ -207,7 +218,13 @@ fn build_dry_run_output_exists_still_rejected() {
 fn build_arch_override_to_noarch_when_supported() {
     setup_test!();
 
-    let stdout = run!("build", "-a", "x86_64", repo_path!("fakeblock@1.0.0.bbuild")).unwrap();
+    let stdout = run!(
+        "build",
+        "-a",
+        "x86_64",
+        repo_path!("fakeblock@1.0.0.bbuild")
+    )
+    .unwrap();
     assert!(stdout.contains("Built fakeblock@1.0.0:noarch.bpt"));
     assert!(std::path::Path::new(per_test_path!("fakeblock@1.0.0:noarch.bpt")).exists());
 }

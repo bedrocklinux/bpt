@@ -93,7 +93,13 @@ impl ReplaceOp {
             Color::Default,
             self.to.pkgid().color()
         )?;
-        write!(f, " {}({}from {}", Color::Deemphasize, Color::Deemphasize, self.from.color())?;
+        write!(
+            f,
+            " {}({}from {}",
+            Color::Deemphasize,
+            Color::Deemphasize,
+            self.from.color()
+        )?;
         write!(f, "{}", Color::Deemphasize)?;
         if let Some(world_change) = &self.world_change {
             write!(f, "; {world_change}")?;
@@ -178,8 +184,8 @@ mod tests {
     use super::*;
     use crate::marshalling::{FieldList, FieldStr, FromFieldStr};
     use crate::metadata::{
-        Arch, Backup, Depends, Homepage, License, MakeArchs, MakeBins, MakeDepends, PkgDesc,
-        PkgId, PkgInfo, PkgName, PkgVer, RepoPath,
+        Arch, Backup, Depends, Homepage, License, MakeArchs, MakeBins, MakeDepends, PkgDesc, PkgId,
+        PkgInfo, PkgName, PkgVer, RepoPath,
     };
     use crate::reconcile::instpkg_rec::TargetSource;
 

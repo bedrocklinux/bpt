@@ -158,6 +158,7 @@ fn check_backup_diff_warns_but_succeeds() {
     assert!(stdout.contains("fakeblock@1.0.0:noarch"));
     assert!(stdout.contains("Incorrect sha256:"));
     assert!(stdout.contains(&format!("{root}/etc/fakeblock.conf")));
+    assert!(stdout.contains("\n\nChecked installed package fakeblock@1.0.0:noarch"));
     assert!(stdout.contains("Checked installed package fakeblock@1.0.0:noarch"));
 }
 

@@ -78,9 +78,7 @@ fn resolve_partid_paths(
     pkg_files: &PkgFiles,
     archs: &[crate::metadata::Arch],
 ) -> Result<(PkgId, Vec<Utf8PathBuf>), Err> {
-    if installed
-        && let Some(instpkg) = installed_pkgs.best_match(partid, archs)
-    {
+    if installed && let Some(instpkg) = installed_pkgs.best_match(partid, archs) {
         return Ok((
             instpkg.pkgid().clone(),
             instpkg.paths().map(|p| p.to_path_buf()).collect(),

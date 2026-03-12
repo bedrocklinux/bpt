@@ -117,6 +117,10 @@ pub fn check(
         return Err(Err::CheckFailed(format_check_report(&error_issues_by_pkg)));
     }
 
+    if !warning_issues_by_pkg.is_empty() {
+        println!();
+    }
+
     if targets.len() == 1 {
         Ok(format!("Checked installed package {}", targets[0]))
     } else {
