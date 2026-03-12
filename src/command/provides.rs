@@ -26,7 +26,10 @@ pub fn provides(
     }
     if installed {
         for (pkgid, paths) in installed_pkgs.pkgid_paths() {
-            pkgs.insert(pkgid.clone(), paths.into_iter().map(|path| path.to_path_buf()).collect());
+            pkgs.insert(
+                pkgid.clone(),
+                paths.into_iter().map(|path| path.to_path_buf()).collect(),
+            );
         }
     }
     if repository {
