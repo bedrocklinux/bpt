@@ -80,10 +80,16 @@ pub fn remove(
     })?;
     print_bptnew(&bptnew);
 
+    println!();
     Ok("Updated installed package set".to_string())
 }
 
 fn print_bptnew(paths: &[Utf8PathBuf]) {
+    if paths.is_empty() {
+        return;
+    }
+
+    println!();
     for path in paths {
         println!("{}Created{} {}.bptnew", Color::Warn, Color::Default, path);
     }
