@@ -54,6 +54,28 @@ brl enable bpt && brl show bpt
 bpt sync
 ```
 
+## Unprivileged Build User
+
+If `bpt` is run as root and asked to process a `*.bbuild`, it drops to the
+`[build]/unprivileged-user` and `[build]/unprivileged-group` configured in
+`/etc/bpt/bpt.conf`. The shipped default config expects both to be `bpt`.
+
+`bpt` does not currently support install hooks, so installing the package does
+not automatically create that account. If you plan to build packages as root,
+create it explicitly:
+
+```sh
+groupadd --system bpt
+useradd --system --gid bpt --home-dir /var/lib/bpt/build --shell /usr/sbin/nologin bpt
+install -d -o bpt -g bpt -m 0700 /var/lib/bpt/build
+```
+
+The `/var/lib/bpt/build` home directory keeps build-user state such as
+`.cargo`, `.rustup`, and `.cache` under the existing `bpt` data directory.
+
+If your system uses a different `nologin` path, adjust the `useradd` command
+accordingly. If you do not build packages as root, this setup is not required.
+
 ## FAQ
 
 ### Why does Bedrock Linux need a package manager?

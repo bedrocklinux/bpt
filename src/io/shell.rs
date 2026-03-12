@@ -13,6 +13,8 @@ use std::{
     io::Write,
     io::{ErrorKind, Seek, SeekFrom},
     os::fd::{AsRawFd, BorrowedFd, FromRawFd, OwnedFd},
+    os::unix::ffi::OsStrExt,
+    path::PathBuf,
     process::exit,
 };
 
@@ -21,7 +23,10 @@ pub struct ProcessCredentials {
     pub user_name: String,
     pub uid: Uid,
     pub gid: Gid,
+    pub home_dir: PathBuf,
 }
+
+const SHELL_QUERY_OUTPUT_FD: i32 = 9;
 
 fn drop_process_credentials(creds: &ProcessCredentials) -> Result<(), AnonLocErr> {
     let user_name = CString::new(creds.user_name.as_str()).map_err(|_| {
@@ -39,6 +44,42 @@ fn drop_process_credentials(creds: &ProcessCredentials) -> Result<(), AnonLocErr
     setuid(creds.uid).map_err(|e| AnonLocErr::DropPrivileges(e.into()))?;
 
     Ok(())
+}
+
+fn ensure_home_dir_exists(creds: &ProcessCredentials) -> Result<(), AnonLocErr> {
+    std::fs::create_dir_all(&creds.home_dir).map_err(AnonLocErr::DropPrivileges)?;
+    let home_dir = CString::new(creds.home_dir.as_os_str().as_bytes()).map_err(|_| {
+        AnonLocErr::DropPrivileges(std::io::Error::new(
+            ErrorKind::InvalidInput,
+            "configured home directory contains NUL byte",
+        ))
+    })?;
+    // Safety: `home_dir` is a valid NUL-terminated path buffer.
+    if unsafe { nix::libc::chown(home_dir.as_ptr(), creds.uid.as_raw(), creds.gid.as_raw()) } != 0 {
+        return Err(AnonLocErr::DropPrivileges(std::io::Error::last_os_error()));
+    }
+
+    Ok(())
+}
+
+unsafe fn set_process_environment(creds: &ProcessCredentials) {
+    // Preserve the original process environment, but rewrite the identity-related values that
+    // tools like cargo/rustup derive state from after the uid/gid switch.
+    let xdg_cache_home = creds.home_dir.join(".cache");
+    let xdg_config_home = creds.home_dir.join(".config");
+    let xdg_data_home = creds.home_dir.join(".local/share");
+    let cargo_home = creds.home_dir.join(".cargo");
+    let rustup_home = creds.home_dir.join(".rustup");
+    unsafe {
+        std::env::set_var("HOME", &creds.home_dir);
+        std::env::set_var("USER", creds.user_name.as_str());
+        std::env::set_var("LOGNAME", creds.user_name.as_str());
+        std::env::set_var("XDG_CACHE_HOME", xdg_cache_home);
+        std::env::set_var("XDG_CONFIG_HOME", xdg_config_home);
+        std::env::set_var("XDG_DATA_HOME", xdg_data_home);
+        std::env::set_var("CARGO_HOME", cargo_home);
+        std::env::set_var("RUSTUP_HOME", rustup_home);
+    }
 }
 
 fn append_inline_shell_scripts(
@@ -90,7 +131,7 @@ pub fn query_shell_scripts(
     // set -eu;
     // <contents of script 1>
     // <contents of script 2>
-    // printf "VAR1=%s\0VAR2=%s\0" "${VAR1:-}" "${VAR2:-}" >&5
+    // printf "VAR1=%s\0VAR2=%s\0" "${VAR1:-}" "${VAR2:-}" >&9
     // ```
     let mut cmd = String::new();
     cmd.push_str("set -eu; ");
@@ -106,7 +147,7 @@ pub fn query_shell_scripts(
         cmd.push_str(var);
         cmd.push_str(":-}\" ");
     }
-    cmd.push_str(&format!(">&{pipe_write}\0"));
+    cmd.push_str(&format!(">&{SHELL_QUERY_OUTPUT_FD}\0"));
 
     // Safety: `fork()` is `unsafe{}` because of concerns around signal handling safety.
     // We're just setting envvars and `exec`ing, which are signal safe.
@@ -116,6 +157,7 @@ pub fn query_shell_scripts(
     let child = match unsafe { fork() }.map_err(|e| AnonLocErr::Fork(e.into()))? {
         ForkResult::Child => {
             close(pipe_read).map_err(|e| AnonLocErr::ClosePipe(e.into()))?;
+            dup2(pipe_write, SHELL_QUERY_OUTPUT_FD).map_err(AnonLocErr::Dup)?;
 
             for (var, val) in input_vars {
                 unsafe {
@@ -123,7 +165,13 @@ pub fn query_shell_scripts(
                 }
             }
             if let Some(credentials) = credentials {
+                ensure_home_dir_exists(credentials)?;
+                std::env::set_current_dir(&credentials.home_dir)
+                    .map_err(AnonLocErr::DropPrivileges)?;
                 drop_process_credentials(credentials)?;
+                // Safety: this runs in the forked child process before exec, so the process is
+                // single-threaded and no other threads can concurrently access the environment.
+                unsafe { set_process_environment(credentials) };
             }
 
             let args = [
@@ -213,14 +261,11 @@ pub fn run_shell_scripts(
     // set -eu;
     // <contents of script 1>
     // <contents of script 2>
-    // cd ${cwd} && set -eux && ${command}
+    // set -eux && ${command}
     // ```
     let mut cmd = String::new();
     cmd.push_str("set -eu; ");
     append_inline_shell_scripts(&mut cmd, script_fds)?;
-    // Pass cwd via env var rather than interpolating into the command string to avoid
-    // shell injection from paths containing characters like $, `, ", etc.
-    cmd.push_str("cd \"${BPT_CWD}\" && ");
     cmd.push_str("set -eux && ");
     cmd.push_str(command);
     cmd.push('\0');
@@ -239,10 +284,13 @@ pub fn run_shell_scripts(
             for (var, val) in input_vars {
                 unsafe { std::env::set_var(var, val) };
             }
-            // Set corresponding env var for "cd" command above; see comment there.
-            unsafe { std::env::set_var("BPT_CWD", cwd.as_str()) };
+            std::env::set_current_dir(cwd).map_err(AnonLocErr::DropPrivileges)?;
             if let Some(credentials) = credentials {
+                ensure_home_dir_exists(credentials)?;
                 drop_process_credentials(credentials)?;
+                // Safety: this runs in the forked child process before exec, so the process is
+                // single-threaded and no other threads can concurrently access the environment.
+                unsafe { set_process_environment(credentials) };
             }
 
             let args = [
@@ -305,8 +353,14 @@ mod tests {
     use camino::Utf8PathBuf;
     use std::{
         fs,
-        os::{fd::AsFd, unix::fs::PermissionsExt},
+        os::{
+            fd::AsFd,
+            unix::fs::{PermissionsExt, symlink},
+        },
+        sync::{LazyLock, Mutex},
     };
+
+    static ENV_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
     fn create_unreadable_script(test_name: &str, contents: &str) -> (Utf8PathBuf, File) {
         let dir = unit_test_tmp_dir("shell", test_name);
@@ -343,5 +397,138 @@ mod tests {
 
         let log = fs::read_to_string(&log_path).unwrap();
         assert!(log.contains("built-from-open-fd"));
+    }
+
+    #[test]
+    fn set_process_environment_updates_login_vars() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let original_home = std::env::var_os("HOME");
+        let original_user = std::env::var_os("USER");
+        let original_logname = std::env::var_os("LOGNAME");
+        let original_xdg_cache_home = std::env::var_os("XDG_CACHE_HOME");
+        let original_xdg_config_home = std::env::var_os("XDG_CONFIG_HOME");
+        let original_xdg_data_home = std::env::var_os("XDG_DATA_HOME");
+        let original_cargo_home = std::env::var_os("CARGO_HOME");
+        let original_rustup_home = std::env::var_os("RUSTUP_HOME");
+        let creds = ProcessCredentials {
+            user_name: "builder".to_owned(),
+            uid: Uid::from_raw(1000),
+            gid: Gid::from_raw(1000),
+            home_dir: PathBuf::from("/var/lib/builder"),
+        };
+
+        // Safety: this test serializes env mutation with a process-wide mutex.
+        unsafe { set_process_environment(&creds) };
+
+        assert_eq!(
+            std::env::var_os("HOME").as_deref(),
+            Some("/var/lib/builder".as_ref())
+        );
+        assert_eq!(
+            std::env::var_os("USER").as_deref(),
+            Some("builder".as_ref())
+        );
+        assert_eq!(
+            std::env::var_os("LOGNAME").as_deref(),
+            Some("builder".as_ref())
+        );
+        assert_eq!(
+            std::env::var_os("XDG_CACHE_HOME").as_deref(),
+            Some("/var/lib/builder/.cache".as_ref())
+        );
+        assert_eq!(
+            std::env::var_os("XDG_CONFIG_HOME").as_deref(),
+            Some("/var/lib/builder/.config".as_ref())
+        );
+        assert_eq!(
+            std::env::var_os("XDG_DATA_HOME").as_deref(),
+            Some("/var/lib/builder/.local/share".as_ref())
+        );
+        assert_eq!(
+            std::env::var_os("CARGO_HOME").as_deref(),
+            Some("/var/lib/builder/.cargo".as_ref())
+        );
+        assert_eq!(
+            std::env::var_os("RUSTUP_HOME").as_deref(),
+            Some("/var/lib/builder/.rustup".as_ref())
+        );
+
+        match original_home {
+            Some(v) => unsafe { std::env::set_var("HOME", v) },
+            None => unsafe { std::env::remove_var("HOME") },
+        }
+        match original_user {
+            Some(v) => unsafe { std::env::set_var("USER", v) },
+            None => unsafe { std::env::remove_var("USER") },
+        }
+        match original_logname {
+            Some(v) => unsafe { std::env::set_var("LOGNAME", v) },
+            None => unsafe { std::env::remove_var("LOGNAME") },
+        }
+        match original_xdg_cache_home {
+            Some(v) => unsafe { std::env::set_var("XDG_CACHE_HOME", v) },
+            None => unsafe { std::env::remove_var("XDG_CACHE_HOME") },
+        }
+        match original_xdg_config_home {
+            Some(v) => unsafe { std::env::set_var("XDG_CONFIG_HOME", v) },
+            None => unsafe { std::env::remove_var("XDG_CONFIG_HOME") },
+        }
+        match original_xdg_data_home {
+            Some(v) => unsafe { std::env::set_var("XDG_DATA_HOME", v) },
+            None => unsafe { std::env::remove_var("XDG_DATA_HOME") },
+        }
+        match original_cargo_home {
+            Some(v) => unsafe { std::env::set_var("CARGO_HOME", v) },
+            None => unsafe { std::env::remove_var("CARGO_HOME") },
+        }
+        match original_rustup_home {
+            Some(v) => unsafe { std::env::set_var("RUSTUP_HOME", v) },
+            None => unsafe { std::env::remove_var("RUSTUP_HOME") },
+        }
+    }
+
+    #[test]
+    fn query_shell_scripts_works_with_dash_and_double_digit_pipe_fd() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let dash = std::process::Command::new("dash")
+            .arg("-c")
+            .arg("exit 0")
+            .status();
+        if matches!(dash, Err(ref e) if e.kind() == ErrorKind::NotFound) {
+            return;
+        }
+        dash.expect("failed to execute dash");
+
+        let original_path = std::env::var_os("PATH");
+        let dir = unit_test_tmp_dir(
+            "shell",
+            "query_shell_scripts_works_with_dash_and_double_digit_pipe_fd",
+        );
+        symlink("/usr/bin/dash", dir.join("sh")).unwrap();
+        let script_path = dir.join("script.sh");
+        fs::write(&script_path, "#!/bin/sh\npkgname=\"from-dash\"\n").unwrap();
+        let script = File::open_ro(&script_path).unwrap();
+
+        // Push the subsequent query pipe fd into double digits to cover shells like dash which do
+        // not accept redirections such as `>&12`.
+        let _extra_fds = (0..16)
+            .map(|nr| {
+                let path = dir.join(format!("extra-{nr}.tmp"));
+                fs::write(&path, "").unwrap();
+                File::open_ro(&path).unwrap()
+            })
+            .collect::<Vec<_>>();
+
+        // Safety: this test serializes env mutation with a process-wide mutex.
+        unsafe { std::env::set_var("PATH", dir.as_str()) };
+        let vars =
+            query_shell_scripts(&[script.as_fd()], &HashMap::new(), &["pkgname"], None).unwrap();
+
+        assert_eq!(vars.get("pkgname"), Some(&"from-dash".to_owned()));
+
+        match original_path {
+            Some(v) => unsafe { std::env::set_var("PATH", v) },
+            None => unsafe { std::env::remove_var("PATH") },
+        }
     }
 }
