@@ -20,6 +20,40 @@ See ./target/release/bpt
 cargo test
 ```
 
+## Bootstrapping into stratum
+
+Acquire a temporary bootstrap binary via either:
+
+```sh
+cargo install bpt
+ls -la ~/.cargo/bin/bpt
+```
+
+or
+
+```sh
+git clone https://github.com/bedrocklinux/bpt
+cd bpt
+cargo build --release
+ls -la ./target/release/bpt
+```
+
+Once you have it available, you can have it bootstrap itself into a Bedrock Linux 0.7 "Poki" stratum via (as root):
+
+```sh
+# install into bootstrap environment
+mkdir -p /bedrock/strata/bpt
+bpt -yVR /bedrock/strata/bpt sync https://bedrocklinux.org/repo/0.8/main/x86_64.pkgidx https://bedrocklinux.org/repo/0.8/main/noarch.pkgidx
+bpt -yVR /bedrock/strata/bpt install bedrocklinux-keys bedrocklinux-repo bpt
+# enable and show stratum
+brl enable bpt && brl show bpt
+# delete bootstrap bpt with either:
+# rm ~/.cargo/bin/bpt
+# rm ./target/release/bpt
+# sync self-hosting bpt's repositories
+bpt sync
+```
+
 ## FAQ
 
 ### Why does Bedrock Linux need a package manager?
