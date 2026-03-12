@@ -9,16 +9,16 @@ fn verify_one() {
     setup_test!();
 
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
-    let _ = run_bpt_sign!(per_test_path!("fakeblock.bbuild")).unwrap();
+    let _ = run_bpt_sign!(per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
 
-    let stdout = run_bpt_verify!(per_test_path!("fakeblock.bbuild")).unwrap();
+    let stdout = run_bpt_verify!(per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Verified"));
-    assert!(stdout.contains("fakeblock.bbuild"));
+    assert!(stdout.contains("fakeblock@1.0.0.bbuild"));
 }
 
 #[ignore = "Decrypts test private key; slow."]
@@ -28,32 +28,32 @@ fn verify_multiple() {
     setup_test!();
 
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
     std::fs::copy(
-        repo_path!("fakeblock-songs.bbuild"),
-        per_test_path!("fakeblock-songs.bbuild"),
+        repo_path!("fakeblock-songs@1.0.0.bbuild"),
+        per_test_path!("fakeblock-songs@1.0.0.bbuild"),
     )
     .unwrap();
     std::fs::copy(
-        repo_path!("fakeblock-song-gen.bbuild"),
-        per_test_path!("fakeblock-song-gen.bbuild"),
+        repo_path!("fakeblock-song-gen@1.0.0.bbuild"),
+        per_test_path!("fakeblock-song-gen@1.0.0.bbuild"),
     )
     .unwrap();
 
     let _ = run_bpt_sign!(
-        per_test_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-songs.bbuild"),
-        per_test_path!("fakeblock-song-gen.bbuild")
+        per_test_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock-songs@1.0.0.bbuild"),
+        per_test_path!("fakeblock-song-gen@1.0.0.bbuild")
     )
     .unwrap();
 
     let stdout = run_bpt_verify!(
-        per_test_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-songs.bbuild"),
-        per_test_path!("fakeblock-song-gen.bbuild")
+        per_test_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock-songs@1.0.0.bbuild"),
+        per_test_path!("fakeblock-song-gen@1.0.0.bbuild")
     )
     .unwrap();
     assert!(stdout.contains("Verified all 3 file signatures"));
@@ -65,12 +65,12 @@ fn verify_missing_signature() {
     setup_test!();
 
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
-    let result = run_bpt_verify!(per_test_path!("fakeblock.bbuild"));
+    let result = run_bpt_verify!(per_test_path!("fakeblock@1.0.0.bbuild"));
     assert!(result.is_err());
     let stdout = result.unwrap_err();
     assert!(stdout.contains("is not signed"));
@@ -82,8 +82,8 @@ fn verify_invalid_signature() {
     setup_test!();
 
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
@@ -91,13 +91,13 @@ fn verify_invalid_signature() {
     let mut file = std::fs::OpenOptions::new()
         .read(true)
         .write(true)
-        .open(per_test_path!("fakeblock.bbuild"))
+        .open(per_test_path!("fakeblock@1.0.0.bbuild"))
         .unwrap();
     file.seek(std::io::SeekFrom::End(0)).unwrap();
     file.write_all(INVALID_SIGNATURE.as_bytes()).unwrap();
     drop(file);
 
-    let result = run_bpt_verify!(per_test_path!("fakeblock.bbuild"));
+    let result = run_bpt_verify!(per_test_path!("fakeblock@1.0.0.bbuild"));
     assert!(result.is_err());
     let stdout = result.unwrap_err();
     assert!(stdout.contains("No configured public key verifies"));
@@ -109,8 +109,8 @@ fn verify_corrupt_signature() {
     setup_test!();
 
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
@@ -118,13 +118,13 @@ fn verify_corrupt_signature() {
     let mut file = std::fs::OpenOptions::new()
         .read(true)
         .write(true)
-        .open(per_test_path!("fakeblock.bbuild"))
+        .open(per_test_path!("fakeblock@1.0.0.bbuild"))
         .unwrap();
     file.seek(std::io::SeekFrom::End(0)).unwrap();
     file.write_all(CORRUPT_SIGNATURE.as_bytes()).unwrap();
     drop(file);
 
-    let result = run_bpt_verify!(per_test_path!("fakeblock.bbuild"));
+    let result = run_bpt_verify!(per_test_path!("fakeblock@1.0.0.bbuild"));
     assert!(result.is_err());
     let stdout = result.unwrap_err();
     assert!(stdout.contains("is corrupt"));
@@ -136,13 +136,13 @@ fn verify_multiple_fails_if_any_file_is_invalid() {
     setup_test!();
 
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
     std::fs::copy(
-        repo_path!("fakeblock-song-gen.bbuild"),
-        per_test_path!("fakeblock-song-gen.bbuild"),
+        repo_path!("fakeblock-song-gen@1.0.0.bbuild"),
+        per_test_path!("fakeblock-song-gen@1.0.0.bbuild"),
     )
     .unwrap();
 
@@ -150,15 +150,15 @@ fn verify_multiple_fails_if_any_file_is_invalid() {
     let mut file = std::fs::OpenOptions::new()
         .read(true)
         .write(true)
-        .open(per_test_path!("fakeblock-song-gen.bbuild"))
+        .open(per_test_path!("fakeblock-song-gen@1.0.0.bbuild"))
         .unwrap();
     file.seek(std::io::SeekFrom::End(0)).unwrap();
     file.write_all(CORRUPT_SIGNATURE.as_bytes()).unwrap();
     drop(file);
 
     let result = run_bpt_verify!(
-        per_test_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-song-gen.bbuild")
+        per_test_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock-song-gen@1.0.0.bbuild")
     );
     assert!(result.is_err());
     let stderr = result.unwrap_err();

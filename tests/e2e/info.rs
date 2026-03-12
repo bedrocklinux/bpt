@@ -17,7 +17,7 @@ fn info_by_repository_partid() {
 fn info_by_bbuild_path() {
     setup_test!();
 
-    let stdout = run!("info", repo_path!("fakeblock.bbuild")).unwrap();
+    let stdout = run!("info", repo_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Name:         fakeblock"));
     assert!(stdout.contains("Architecture: bbuild"));
     assert!(stdout.contains("just a boolean driven aggregation"));
@@ -28,7 +28,7 @@ fn info_by_bbuild_path() {
 fn info_by_bbuild_url() {
     setup_test!();
 
-    let url = repo_url!("fakeblock.bbuild");
+    let url = repo_url!("fakeblock@1.0.0.bbuild");
     let stdout = run!("info", &url).unwrap();
     assert!(stdout.contains("Name:         fakeblock"));
     assert!(stdout.contains("Architecture: bbuild"));
@@ -41,15 +41,15 @@ fn info_bbuild_with_absolute_backup_path_errors() {
     setup_test!();
 
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-absolute-backup.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
         &[(
             "depends=\"fakeblock-songs>=1.0.0\"",
             "depends=\"fakeblock-songs>=1.0.0\"\nbackup=\"/etc/fakeblock.conf\"",
         )],
     );
 
-    let result = run!("info", per_test_path!("fakeblock-absolute-backup.bbuild"));
+    let result = run!("info", per_test_path!("fakeblock@1.0.0.bbuild"));
     assert!(result.is_err());
     let stderr = result.unwrap_err();
     assert!(stderr.contains("contains invalid Backup field"));
@@ -75,8 +75,8 @@ fn info_by_installed_pkgid() {
     setup_test!();
 
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-v2.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@2.0.0.bbuild"),
         &[
             ("pkgver=\"1.0.0\"", "pkgver=\"2.0.0\""),
             (
@@ -85,7 +85,7 @@ fn info_by_installed_pkgid() {
             ),
         ],
     );
-    let _ = run!("install", per_test_path!("fakeblock-v2.bbuild")).unwrap();
+    let _ = run!("install", per_test_path!("fakeblock@2.0.0.bbuild")).unwrap();
 
     let stdout = run!("info", "fakeblock@2.0.0").unwrap();
     assert!(stdout.contains("Name:         fakeblock"));
@@ -100,14 +100,14 @@ fn info_by_pkgid_prefers_installed_metadata_over_repository_metadata() {
     setup_test!();
 
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-local.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
         &[(
             "pkgdesc=\"just a boolean driven aggregation, really, of what programmers call hacker traps\"",
             "pkgdesc=\"installed-only fakeblock variant\"",
         )],
     );
-    let _ = run!("install", per_test_path!("fakeblock-local.bbuild")).unwrap();
+    let _ = run!("install", per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
 
     let installed_stdout = run!("info", "fakeblock@1.0.0").unwrap();
     assert!(installed_stdout.contains("installed-only fakeblock variant"));
@@ -123,16 +123,16 @@ fn info_bbuild_lists_makebins_but_bpt_does_not() {
     setup_test!();
 
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-makebins.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
         &[("makedepends=\"\"", "makedepends=\"\"\nmakebins=\"sh\"")],
     );
 
-    let bbuild_info = run!("info", per_test_path!("fakeblock-makebins.bbuild")).unwrap();
+    let bbuild_info = run!("info", per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(bbuild_info.contains("MakeBins"));
     assert!(bbuild_info.contains("sh"));
 
-    let build_stdout = run!("build", per_test_path!("fakeblock-makebins.bbuild")).unwrap();
+    let build_stdout = run!("build", per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(build_stdout.contains("Built fakeblock@1.0.0:noarch.bpt"));
 
     let bpt_info = run!("info", per_test_path!("fakeblock@1.0.0:noarch.bpt")).unwrap();
@@ -145,15 +145,15 @@ fn info_bbuild_lists_makebin_group_aliases() {
     setup_test!();
 
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-makebin-groups.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
         &[(
             "makedepends=\"\"",
             "makedepends=\"\"\nmakebins=\"@core @autotools\"",
         )],
     );
 
-    let stdout = run!("info", per_test_path!("fakeblock-makebin-groups.bbuild")).unwrap();
+    let stdout = run!("info", per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("MakeBins"));
     assert!(stdout.contains("@core"));
     assert!(stdout.contains("@autotools"));
@@ -165,14 +165,14 @@ fn info_bbuild_with_invalid_makebin_group_alias_errors() {
     setup_test!();
 
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-invalid-makebin-group.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
         &[("makedepends=\"\"", "makedepends=\"\"\nmakebins=\"@bogus\"")],
     );
 
     let result = run!(
         "info",
-        per_test_path!("fakeblock-invalid-makebin-group.bbuild")
+        per_test_path!("fakeblock@1.0.0.bbuild")
     );
     assert!(result.is_err());
     let stderr = result.unwrap_err();

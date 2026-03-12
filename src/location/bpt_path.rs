@@ -61,7 +61,7 @@ mod tests {
     fn rejects_bbuild_paths() {
         let path = BptPath::from_path(Utf8Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/tests/bbuilds/fakeblock.bbuild"
+            "/tests/bbuilds/fakeblock@1.0.0.bbuild"
         )));
 
         match path.open(&PublicKeys::from_skipping_verification(), None) {

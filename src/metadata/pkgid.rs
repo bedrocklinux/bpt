@@ -259,6 +259,12 @@ mod tests {
     }
 
     #[test]
+    fn canonical_filename_uses_pkgver_for_bbuilds() {
+        let pkgid = mkpkgid("foo", "1.2.3", "bbuild");
+        assert_eq!(pkgid.canonical_filename(), "foo@1.2.3.bbuild");
+    }
+
+    #[test]
     fn same_arch_version_with_epoch() {
         let archs = default_archs();
         let a = mkpkgid("foo", "e1-1.0.0", "x86_64");

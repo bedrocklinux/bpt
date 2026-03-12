@@ -4,9 +4,9 @@
 
 These have inter-dependencies to test the dependency code paths.
 
-- `fakeblock.bbuild` depends on `fakeblock-songs`
-- `fakeblock-songs.bbuild` makedepends on `fakeblock-song-gen`
-- `fakeblock-song-gen.bbuild` has no dependencies, runtime or otherwise
+- `fakeblock@1.0.0.bbuild` depends on `fakeblock-songs`
+- `fakeblock-songs@1.0.0.bbuild` makedepends on `fakeblock-song-gen`
+- `fakeblock-song-gen@1.0.0.bbuild` has no dependencies, runtime or otherwise
 
 ## e2e test infrastructure relationship
 

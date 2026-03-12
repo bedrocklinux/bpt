@@ -44,18 +44,18 @@ fn make_repo_creates_repo_artifacts() {
     let _guard = make_repo_lock();
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
     std::fs::copy(
-        repo_path!("fakeblock-songs.bbuild"),
-        per_test_path!("fakeblock-songs.bbuild"),
+        repo_path!("fakeblock-songs@1.0.0.bbuild"),
+        per_test_path!("fakeblock-songs@1.0.0.bbuild"),
     )
     .unwrap();
     std::fs::copy(
-        repo_path!("fakeblock-song-gen.bbuild"),
-        per_test_path!("fakeblock-song-gen.bbuild"),
+        repo_path!("fakeblock-song-gen@1.0.0.bbuild"),
+        per_test_path!("fakeblock-song-gen@1.0.0.bbuild"),
     )
     .unwrap();
 
@@ -80,8 +80,8 @@ fn make_repo_noop_when_already_synchronized() {
     let _guard = make_repo_lock();
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
@@ -96,8 +96,8 @@ fn make_repo_prompt_decline_aborts() {
     let _guard = make_repo_lock();
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
@@ -114,8 +114,8 @@ fn make_repo_prompt_accept_continues() {
     let _guard = make_repo_lock();
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
@@ -131,23 +131,23 @@ fn make_repo_removes_stale_bpt_and_updates_indexes() {
     let _guard = make_repo_lock();
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
     std::fs::copy(
-        repo_path!("fakeblock-songs.bbuild"),
-        per_test_path!("fakeblock-songs.bbuild"),
+        repo_path!("fakeblock-songs@1.0.0.bbuild"),
+        per_test_path!("fakeblock-songs@1.0.0.bbuild"),
     )
     .unwrap();
     std::fs::copy(
-        repo_path!("fakeblock-song-gen.bbuild"),
-        per_test_path!("fakeblock-song-gen.bbuild"),
+        repo_path!("fakeblock-song-gen@1.0.0.bbuild"),
+        per_test_path!("fakeblock-song-gen@1.0.0.bbuild"),
     )
     .unwrap();
     let _ = run_bpt_make_repo!("-O", per_test_path!()).unwrap();
 
-    std::fs::remove_file(per_test_path!("fakeblock-song-gen.bbuild")).unwrap();
+    std::fs::remove_file(per_test_path!("fakeblock-song-gen@1.0.0.bbuild")).unwrap();
 
     let stdout = run_bpt_make_repo!("-O", per_test_path!()).unwrap();
     assert!(stdout.contains("Updated repository files from 2 *.bbuild file(s)"));
@@ -161,8 +161,8 @@ fn make_repo_updates_when_bbuild_is_newer() {
     let _guard = make_repo_lock();
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
@@ -175,7 +175,7 @@ fn make_repo_updates_when_bbuild_is_newer() {
     std::thread::sleep(std::time::Duration::from_secs(1));
     std::fs::OpenOptions::new()
         .append(true)
-        .open(per_test_path!("fakeblock.bbuild"))
+        .open(per_test_path!("fakeblock@1.0.0.bbuild"))
         .unwrap()
         .write_all(b"\n# touch for mtime-based update\n")
         .unwrap();
@@ -197,8 +197,8 @@ fn make_repo_dry_run_should_not_write_artifacts() {
     let _guard = make_repo_lock();
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
@@ -216,8 +216,8 @@ fn make_repo_removes_stale_indexes_for_unconfigured_arch() {
     let _guard = make_repo_lock();
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
@@ -246,8 +246,8 @@ fn make_repo_rejects_invalid_pkgidx_filename_stem() {
     let _guard = make_repo_lock();
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
     run_bpt_make_repo!("-O", per_test_path!()).unwrap();
@@ -272,13 +272,13 @@ fn make_repo_orders_builds_by_makedepends() {
     setup_test!();
 
     std::fs::copy(
-        repo_path!("aaa-consumer.bbuild"),
-        per_test_path!("aaa-consumer.bbuild"),
+        repo_path!("aaa-consumer@1.0.0.bbuild"),
+        per_test_path!("aaa-consumer@1.0.0.bbuild"),
     )
     .unwrap();
     std::fs::copy(
-        repo_path!("zzz-helper.bbuild"),
-        per_test_path!("zzz-helper.bbuild"),
+        repo_path!("zzz-helper@1.0.0.bbuild"),
+        per_test_path!("zzz-helper@1.0.0.bbuild"),
     )
     .unwrap();
 

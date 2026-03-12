@@ -98,28 +98,28 @@ pub fn common_setup() {
     // Common repo bbuild files
     create_dir_all(repo_path!("")).unwrap();
     symlink(
-        format!("{cwd}/tests/bbuilds/fakeblock.bbuild"),
-        repo_path!("fakeblock.bbuild"),
+        format!("{cwd}/tests/bbuilds/fakeblock@1.0.0.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
     symlink(
-        format!("{cwd}/tests/bbuilds/fakeblock-songs.bbuild"),
-        repo_path!("fakeblock-songs.bbuild"),
+        format!("{cwd}/tests/bbuilds/fakeblock-songs@1.0.0.bbuild"),
+        repo_path!("fakeblock-songs@1.0.0.bbuild"),
     )
     .unwrap();
     symlink(
-        format!("{cwd}/tests/bbuilds/fakeblock-song-gen.bbuild"),
-        repo_path!("fakeblock-song-gen.bbuild"),
+        format!("{cwd}/tests/bbuilds/fakeblock-song-gen@1.0.0.bbuild"),
+        repo_path!("fakeblock-song-gen@1.0.0.bbuild"),
     )
     .unwrap();
     symlink(
-        format!("{cwd}/tests/bbuilds/aaa-consumer.bbuild"),
-        repo_path!("aaa-consumer.bbuild"),
+        format!("{cwd}/tests/bbuilds/aaa-consumer@1.0.0.bbuild"),
+        repo_path!("aaa-consumer@1.0.0.bbuild"),
     )
     .unwrap();
     symlink(
-        format!("{cwd}/tests/bbuilds/zzz-helper.bbuild"),
-        repo_path!("zzz-helper.bbuild"),
+        format!("{cwd}/tests/bbuilds/zzz-helper@1.0.0.bbuild"),
+        repo_path!("zzz-helper@1.0.0.bbuild"),
     )
     .unwrap();
 
@@ -143,7 +143,7 @@ pub fn common_setup() {
 
     // Launch file server for `http://` tests
     launch_file_server();
-    assert_file_server_ready("fakeblock.bbuild");
+    assert_file_server_ready("fakeblock@1.0.0.bbuild");
 
     // Sync repo indexes so tests can look up packages by pkgid
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_bpt"))

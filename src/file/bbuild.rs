@@ -14,7 +14,7 @@ use std::{
 
 /// Package build definition
 ///
-/// Filenames typically end in `.bbuild`.
+/// Canonical filenames are `<pkgname>@<pkgver>.bbuild`.
 pub struct Bbuild {
     file: BoundedFile,
     pkginfo: PkgInfo,

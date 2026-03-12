@@ -39,7 +39,7 @@ fn install_repository_pkg_installs_dependencies_and_marks_world_explicit() {
 fn install_bbuild_path_pins_arch_in_world_and_builds() {
     setup_test!();
 
-    let stdout = run!("install", repo_path!("fakeblock.bbuild")).unwrap();
+    let stdout = run!("install", repo_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Install"));
     assert!(stdout.contains("fakeblock@1.0.0:noarch"));
     assert!(stdout.contains("build"));
@@ -119,7 +119,7 @@ fn install_reinstall_dependency_only_upgrades_same_version_without_world_add() {
 fn install_bpt_path_pins_arch_in_world() {
     setup_test!();
 
-    let _ = run!("build", repo_path!("fakeblock.bbuild")).unwrap();
+    let _ = run!("build", repo_path!("fakeblock@1.0.0.bbuild")).unwrap();
     let stdout = run!("install", per_test_path!("fakeblock@1.0.0:noarch.bpt")).unwrap();
     assert!(stdout.contains("Install"));
     assert!(stdout.contains("fakeblock@1.0.0:noarch"));
@@ -136,7 +136,7 @@ fn install_conflicting_bpt_errors_without_mutating_state() {
 
     let _ = run!("install", "fakeblock").unwrap();
     std::fs::write(
-        per_test_path!("fakeblock-conflict.bbuild"),
+        per_test_path!("fakeblock-conflict@1.0.0.bbuild"),
         r#"#!/bin/sh
 pkgname="fakeblock-conflict"
 pkgver="1.0.0"
@@ -158,7 +158,7 @@ build() {
 "#,
     )
     .unwrap();
-    let _ = run!("build", per_test_path!("fakeblock-conflict.bbuild")).unwrap();
+    let _ = run!("build", per_test_path!("fakeblock-conflict@1.0.0.bbuild")).unwrap();
 
     let result = run!(
         "install",
@@ -227,8 +227,8 @@ fn install_backup_file_identical_does_not_create_bptnew() {
     setup_test!();
 
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-backup.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
         &[(
             "depends=\"fakeblock-songs>=1.0.0\"",
             "depends=\"fakeblock-songs>=1.0.0\"\nbackup=\"etc/fakeblock.conf\"",
@@ -236,7 +236,7 @@ fn install_backup_file_identical_does_not_create_bptnew() {
     );
     std::fs::write(per_test_path!("etc/fakeblock.conf"), "sound=tok\n").unwrap();
 
-    let stdout = run!("install", per_test_path!("fakeblock-backup.bbuild")).unwrap();
+    let stdout = run!("install", per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Install"));
     assert!(!stdout.contains(".bptnew"));
     assert!(!Path::new(per_test_path!("etc/fakeblock.conf.bptnew")).exists());
@@ -248,8 +248,8 @@ fn install_backup_file_difference_creates_bptnew() {
     setup_test!();
 
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-backup.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
         &[(
             "depends=\"fakeblock-songs>=1.0.0\"",
             "depends=\"fakeblock-songs>=1.0.0\"\nbackup=\"etc/fakeblock.conf\"",
@@ -257,7 +257,7 @@ fn install_backup_file_difference_creates_bptnew() {
     );
     std::fs::write(per_test_path!("etc/fakeblock.conf"), "sound=zap\n").unwrap();
 
-    let stdout = run!("install", per_test_path!("fakeblock-backup.bbuild")).unwrap();
+    let stdout = run!("install", per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Install"));
     assert!(stdout.contains("Created"));
     assert!(stdout.contains("etc/fakeblock.conf.bptnew"));

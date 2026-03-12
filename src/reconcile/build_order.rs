@@ -170,10 +170,10 @@ build() {{
             "build_order",
             "sort_build_targets_orders_provider_before_consumer",
         );
-        let provider_path = write_test_bbuild(&dir, "zzz-helper.bbuild", "zzz-helper", "");
+        let provider_path = write_test_bbuild(&dir, "zzz-helper@1.0.0.bbuild", "zzz-helper", "");
         let consumer_path = write_test_bbuild(
             &dir,
-            "aaa-consumer.bbuild",
+            "aaa-consumer@1.0.0.bbuild",
             "aaa-consumer",
             "zzz-helper>=1.0.0",
         );
@@ -210,8 +210,8 @@ build() {{
             "build_order",
             "sort_build_targets_uses_pkgid_order_for_independent_targets",
         );
-        let alpha_path = write_test_bbuild(&dir, "alpha.bbuild", "alpha", "");
-        let beta_path = write_test_bbuild(&dir, "beta.bbuild", "beta", "");
+        let alpha_path = write_test_bbuild(&dir, "alpha@1.0.0.bbuild", "alpha", "");
+        let beta_path = write_test_bbuild(&dir, "beta@1.0.0.bbuild", "beta", "");
         let alpha = load_bbuild(&alpha_path);
         let beta = load_bbuild(&beta_path);
 
@@ -242,8 +242,8 @@ build() {{
             "build_order",
             "sort_build_targets_detects_dependency_cycles",
         );
-        let alpha_path = write_test_bbuild(&dir, "alpha.bbuild", "alpha", "beta>=1.0.0");
-        let beta_path = write_test_bbuild(&dir, "beta.bbuild", "beta", "alpha>=1.0.0");
+        let alpha_path = write_test_bbuild(&dir, "alpha@1.0.0.bbuild", "alpha", "beta>=1.0.0");
+        let beta_path = write_test_bbuild(&dir, "beta@1.0.0.bbuild", "beta", "alpha>=1.0.0");
         let alpha = load_bbuild(&alpha_path);
         let beta = load_bbuild(&beta_path);
 
@@ -279,8 +279,8 @@ build() {{
             "build_order",
             "sort_build_targets_ignores_dependencies_outside_target_set",
         );
-        let alpha_path = write_test_bbuild(&dir, "alpha.bbuild", "alpha", "missing>=1.0.0");
-        let beta_path = write_test_bbuild(&dir, "beta.bbuild", "beta", "");
+        let alpha_path = write_test_bbuild(&dir, "alpha@1.0.0.bbuild", "alpha", "missing>=1.0.0");
+        let beta_path = write_test_bbuild(&dir, "beta@1.0.0.bbuild", "beta", "");
         let alpha = load_bbuild(&alpha_path);
         let beta = load_bbuild(&beta_path);
 
@@ -308,9 +308,9 @@ build() {{
     #[test]
     fn sort_build_targets_orders_transitive_chains() {
         let dir = unit_test_tmp_dir("build_order", "sort_build_targets_orders_transitive_chains");
-        let a_path = write_test_bbuild(&dir, "a.bbuild", "a", "b>=1.0.0");
-        let b_path = write_test_bbuild(&dir, "b.bbuild", "b", "c>=1.0.0");
-        let c_path = write_test_bbuild(&dir, "c.bbuild", "c", "");
+        let a_path = write_test_bbuild(&dir, "a@1.0.0.bbuild", "a", "b>=1.0.0");
+        let b_path = write_test_bbuild(&dir, "b@1.0.0.bbuild", "b", "c>=1.0.0");
+        let c_path = write_test_bbuild(&dir, "c@1.0.0.bbuild", "c", "");
         let a = load_bbuild(&a_path);
         let b = load_bbuild(&b_path);
         let c = load_bbuild(&c_path);
@@ -350,10 +350,10 @@ build() {{
             "build_order",
             "sort_build_targets_handles_diamond_dependencies_without_duplicates",
         );
-        let a_path = write_test_bbuild(&dir, "a.bbuild", "a", "b>=1.0.0 c>=1.0.0");
-        let b_path = write_test_bbuild(&dir, "b.bbuild", "b", "d>=1.0.0");
-        let c_path = write_test_bbuild(&dir, "c.bbuild", "c", "d>=1.0.0");
-        let d_path = write_test_bbuild(&dir, "d.bbuild", "d", "");
+        let a_path = write_test_bbuild(&dir, "a@1.0.0.bbuild", "a", "b>=1.0.0 c>=1.0.0");
+        let b_path = write_test_bbuild(&dir, "b@1.0.0.bbuild", "b", "d>=1.0.0");
+        let c_path = write_test_bbuild(&dir, "c@1.0.0.bbuild", "c", "d>=1.0.0");
+        let d_path = write_test_bbuild(&dir, "d@1.0.0.bbuild", "d", "");
         let a = load_bbuild(&a_path);
         let b = load_bbuild(&b_path);
         let c = load_bbuild(&c_path);

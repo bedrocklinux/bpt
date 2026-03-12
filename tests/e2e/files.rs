@@ -56,11 +56,11 @@ fn files_by_bpt_url() {
 fn files_rejects_bbuild_path() {
     setup_test!();
 
-    let result = run!("files", repo_path!("fakeblock.bbuild"));
+    let result = run!("files", repo_path!("fakeblock@1.0.0.bbuild"));
     assert!(result.is_err());
     let stderr = result.unwrap_err();
     assert!(stderr.contains("not a valid filepath to a bpt"));
-    assert!(stderr.contains("fakeblock.bbuild"));
+    assert!(stderr.contains("fakeblock@1.0.0.bbuild"));
 }
 
 #[test]
@@ -68,12 +68,12 @@ fn files_rejects_bbuild_path() {
 fn files_rejects_bbuild_url() {
     setup_test!();
 
-    let url = repo_url!("fakeblock.bbuild");
+    let url = repo_url!("fakeblock@1.0.0.bbuild");
     let result = run!("files", &url);
     assert!(result.is_err());
     let stderr = result.unwrap_err();
     assert!(stderr.contains("not a valid http:// or https:// URL to a bpt"));
-    assert!(stderr.contains("fakeblock.bbuild"));
+    assert!(stderr.contains("fakeblock@1.0.0.bbuild"));
 }
 
 #[test]
@@ -94,8 +94,8 @@ fn files_by_installed_pkgid_when_repository_missing_version() {
     setup_test!();
 
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-v2.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@2.0.0.bbuild"),
         &[
             ("pkgver=\"1.0.0\"", "pkgver=\"2.0.0\""),
             (
@@ -104,7 +104,7 @@ fn files_by_installed_pkgid_when_repository_missing_version() {
             ),
         ],
     );
-    let _ = run!("install", per_test_path!("fakeblock-v2.bbuild")).unwrap();
+    let _ = run!("install", per_test_path!("fakeblock@2.0.0.bbuild")).unwrap();
 
     let stdout = run!("files", "fakeblock@2.0.0").unwrap();
     assert!(stdout.contains("fakeblock@2.0.0:noarch"));
@@ -119,14 +119,14 @@ fn files_by_pkgid_prefers_installed_contents_over_repository_metadata() {
     setup_test!();
 
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-local.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
         &[(
             "cat <<EOF > \"${pkgdir}/etc/fakeblock.conf\"\nsound=tok\nEOF",
             "cat <<EOF > \"${pkgdir}/etc/fakeblock.conf\"\nsound=tok\nEOF\n\nmkdir -p \"${pkgdir}/usr/share/fakeblock\"\nprintf '%s\\n' 'installed only' > \"${pkgdir}/usr/share/fakeblock/installed-only\"",
         )],
     );
-    let _ = run!("install", per_test_path!("fakeblock-local.bbuild")).unwrap();
+    let _ = run!("install", per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
 
     let installed_stdout = run!("files", "fakeblock@1.0.0").unwrap();
     assert!(installed_stdout.contains("usr/share/fakeblock/installed-only"));

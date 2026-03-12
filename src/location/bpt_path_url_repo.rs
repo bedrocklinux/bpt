@@ -46,7 +46,7 @@ mod tests {
 
     #[test]
     fn bbuild_suffix_is_parsed_as_path_for_later_type_validation() {
-        let parsed = BptPathUrlRepo::from_str("fakeblock.bbuild").unwrap();
+        let parsed = BptPathUrlRepo::from_str("fakeblock@1.0.0.bbuild").unwrap();
         assert!(matches!(parsed, BptPathUrlRepo::Path(_)));
     }
 

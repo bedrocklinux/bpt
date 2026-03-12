@@ -9,8 +9,8 @@ fn upgrade_path_bbuild_replaces_installed_version_and_updates_world_entry() {
 
     let _ = run!("install", "fakeblock").unwrap();
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-v2.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@2.0.0.bbuild"),
         &[
             ("pkgver=\"1.0.0\"", "pkgver=\"2.0.0\""),
             (
@@ -21,7 +21,7 @@ fn upgrade_path_bbuild_replaces_installed_version_and_updates_world_entry() {
         ],
     );
 
-    let stdout = run!("upgrade", per_test_path!("fakeblock-v2.bbuild")).unwrap();
+    let stdout = run!("upgrade", per_test_path!("fakeblock@2.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Upgrade"));
     assert!(stdout.contains("fakeblock@2.0.0:noarch"));
     assert!(stdout.contains("from fakeblock@1.0.0:noarch"));
@@ -46,8 +46,8 @@ fn upgrade_dependency_only_pkg_allowed_without_world_change() {
 
     let _ = run!("install", "fakeblock").unwrap();
     write_modified_bbuild(
-        repo_path!("fakeblock-songs.bbuild"),
-        per_test_path!("fakeblock-songs-v2.bbuild"),
+        repo_path!("fakeblock-songs@1.0.0.bbuild"),
+        per_test_path!("fakeblock-songs@2.0.0.bbuild"),
         &[
             ("pkgver=\"1.0.0\"", "pkgver=\"2.0.0\""),
             (
@@ -57,7 +57,7 @@ fn upgrade_dependency_only_pkg_allowed_without_world_change() {
         ],
     );
 
-    let stdout = run!("upgrade", per_test_path!("fakeblock-songs-v2.bbuild")).unwrap();
+    let stdout = run!("upgrade", per_test_path!("fakeblock-songs@2.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Upgrade"));
     assert!(stdout.contains("fakeblock-songs@2.0.0:noarch"));
     assert!(stdout.contains("from fakeblock-songs@1.0.0:noarch"));
@@ -90,8 +90,8 @@ fn upgrade_repository_partid_uses_latest_repository_version() {
     setup_test!();
 
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-v0.9.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@0.9.0.bbuild"),
         &[
             ("pkgver=\"1.0.0\"", "pkgver=\"0.9.0\""),
             (
@@ -101,7 +101,7 @@ fn upgrade_repository_partid_uses_latest_repository_version() {
         ],
     );
 
-    let _ = run!("install", per_test_path!("fakeblock-v0.9.bbuild")).unwrap();
+    let _ = run!("install", per_test_path!("fakeblock@0.9.0.bbuild")).unwrap();
     let stdout = run!("upgrade", "fakeblock").unwrap();
     assert!(stdout.contains("Upgrade"));
     assert!(stdout.contains("fakeblock@1.0.0:noarch"));
@@ -121,7 +121,7 @@ fn upgrade_removes_stale_empty_directories() {
     setup_test!();
 
     std::fs::write(
-        per_test_path!("compmove-v1.bbuild"),
+        per_test_path!("compmove@1.0.0.bbuild"),
         r#"#!/bin/sh
 pkgname="compmove"
 pkgver="1.0.0"
@@ -143,7 +143,7 @@ build() {
     )
     .unwrap();
     std::fs::write(
-        per_test_path!("compmove-v2.bbuild"),
+        per_test_path!("compmove@2.0.0.bbuild"),
         r#"#!/bin/sh
 pkgname="compmove"
 pkgver="2.0.0"
@@ -165,12 +165,12 @@ build() {
     )
     .unwrap();
 
-    let _ = run!("install", per_test_path!("compmove-v1.bbuild")).unwrap();
+    let _ = run!("install", per_test_path!("compmove@1.0.0.bbuild")).unwrap();
     assert!(
         std::path::Path::new(per_test_path!("usr/share/zsh/site-functions/_compmove")).exists()
     );
 
-    let stdout = run!("upgrade", per_test_path!("compmove-v2.bbuild")).unwrap();
+    let stdout = run!("upgrade", per_test_path!("compmove@2.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Upgrade"));
     assert!(stdout.contains("compmove@2.0.0:noarch"));
     assert!(stdout.contains("from compmove@1.0.0:noarch"));

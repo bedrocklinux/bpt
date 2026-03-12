@@ -124,8 +124,8 @@ fn sync_rejects_older_target_index_timestamp() {
     // Rebuild a local index later so it has a newer embedded timestamp than the source index.
     std::thread::sleep(Duration::from_secs(1));
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
     run_bpt_make_repo!("-O", per_test_path!()).unwrap();

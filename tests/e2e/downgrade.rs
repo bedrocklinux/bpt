@@ -8,12 +8,12 @@ fn downgrade_repository_partid_with_version_replaces_installed_version_and_world
     setup_test!();
 
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-v2.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@2.0.0.bbuild"),
         &[("pkgver=\"1.0.0\"", "pkgver=\"2.0.0\"")],
     );
 
-    let _ = run!("install", per_test_path!("fakeblock-v2.bbuild")).unwrap();
+    let _ = run!("install", per_test_path!("fakeblock@2.0.0.bbuild")).unwrap();
     let stdout = run!("downgrade", "fakeblock@1.0.0").unwrap();
     assert!(stdout.contains("Downgrade"));
     assert!(stdout.contains("fakeblock@1.0.0:noarch"));
@@ -34,11 +34,11 @@ fn downgrade_dependency_only_pkg_rejected() {
 
     let _ = run!("install", "fakeblock").unwrap();
     write_modified_bbuild(
-        repo_path!("fakeblock-songs.bbuild"),
-        per_test_path!("fakeblock-songs-v2.bbuild"),
+        repo_path!("fakeblock-songs@1.0.0.bbuild"),
+        per_test_path!("fakeblock-songs@2.0.0.bbuild"),
         &[("pkgver=\"1.0.0\"", "pkgver=\"2.0.0\"")],
     );
-    let _ = run!("upgrade", per_test_path!("fakeblock-songs-v2.bbuild")).unwrap();
+    let _ = run!("upgrade", per_test_path!("fakeblock-songs@2.0.0.bbuild")).unwrap();
 
     let result = run!("downgrade", "fakeblock-songs@1.0.0");
     assert!(result.is_err());

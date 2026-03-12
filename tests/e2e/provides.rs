@@ -61,14 +61,14 @@ fn provides_by_pkgid_prefers_installed_paths_over_repository_metadata() {
     setup_test!();
 
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-local.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
         &[(
             "cat <<EOF > \"${pkgdir}/etc/fakeblock.conf\"\nsound=tok\nEOF",
             "cat <<EOF > \"${pkgdir}/etc/fakeblock.conf\"\nsound=tok\nEOF\n\nmkdir -p \"${pkgdir}/usr/share/fakeblock\"\nprintf '%s\\n' 'installed only' > \"${pkgdir}/usr/share/fakeblock/installed-only\"",
         )],
     );
-    let _ = run!("install", per_test_path!("fakeblock-local.bbuild")).unwrap();
+    let _ = run!("install", per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
 
     let installed_stdout = run!("provides", "installed-only$").unwrap();
     assert!(installed_stdout.contains("fakeblock@1.0.0:noarch"));

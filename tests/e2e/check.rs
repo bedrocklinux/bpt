@@ -35,16 +35,16 @@ fn prepare_backup_fixture(root: &str) {
     setup_custom_root(root);
 
     write_modified_bbuild(
-        repo_path!("fakeblock.bbuild"),
-        &format!("{root}/fakeblock-backup.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        &format!("{root}/fakeblock@1.0.0.bbuild"),
         &[(
             "depends=\"fakeblock-songs>=1.0.0\"",
             "depends=\"fakeblock-songs>=1.0.0\"\nbackup=\"etc/fakeblock.conf\"",
         )],
     );
 
-    let songs_bbuild = repo_path!("fakeblock-songs.bbuild");
-    let fakeblock_bbuild = format!("{root}/fakeblock-backup.bbuild");
+    let songs_bbuild = repo_path!("fakeblock-songs@1.0.0.bbuild");
+    let fakeblock_bbuild = format!("{root}/fakeblock@1.0.0.bbuild");
     let _ = run_at_root(root, &["build", songs_bbuild]).unwrap();
     let _ = run_at_root(root, &["build", &fakeblock_bbuild]).unwrap();
 

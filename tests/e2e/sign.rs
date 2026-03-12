@@ -10,16 +10,16 @@ use std::time::SystemTime;
 fn sign_one() {
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
-    let stdout = run_bpt_sign!(per_test_path!("fakeblock.bbuild")).unwrap();
+    let stdout = run_bpt_sign!(per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Signed"));
-    assert!(stdout.contains("fakeblock.bbuild"));
+    assert!(stdout.contains("fakeblock@1.0.0.bbuild"));
 
-    let _ = run_bpt_verify!(per_test_path!("fakeblock.bbuild")).unwrap();
+    let _ = run_bpt_verify!(per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
 }
 
 #[ignore = "Decrypts test private key; slow."]
@@ -28,33 +28,33 @@ fn sign_one() {
 fn sign_multiple() {
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
     std::fs::copy(
-        repo_path!("fakeblock-songs.bbuild"),
-        per_test_path!("fakeblock-songs.bbuild"),
+        repo_path!("fakeblock-songs@1.0.0.bbuild"),
+        per_test_path!("fakeblock-songs@1.0.0.bbuild"),
     )
     .unwrap();
     std::fs::copy(
-        repo_path!("fakeblock-song-gen.bbuild"),
-        per_test_path!("fakeblock-song-gen.bbuild"),
+        repo_path!("fakeblock-song-gen@1.0.0.bbuild"),
+        per_test_path!("fakeblock-song-gen@1.0.0.bbuild"),
     )
     .unwrap();
 
     let stdout = run_bpt_sign!(
-        per_test_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-songs.bbuild"),
-        per_test_path!("fakeblock-song-gen.bbuild")
+        per_test_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock-songs@1.0.0.bbuild"),
+        per_test_path!("fakeblock-song-gen@1.0.0.bbuild")
     )
     .unwrap();
     assert!(stdout.contains("Signed all 3 files"));
 
     let _ = run_bpt_verify!(
-        per_test_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-songs.bbuild"),
-        per_test_path!("fakeblock-song-gen.bbuild")
+        per_test_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock-songs@1.0.0.bbuild"),
+        per_test_path!("fakeblock-song-gen@1.0.0.bbuild")
     )
     .unwrap();
 }
@@ -65,24 +65,24 @@ fn sign_multiple() {
 fn sign_already_signed() {
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
-    let stdout = run_bpt_sign!(per_test_path!("fakeblock.bbuild")).unwrap();
+    let stdout = run_bpt_sign!(per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Signed"));
-    assert!(stdout.contains("fakeblock.bbuild"));
+    assert!(stdout.contains("fakeblock@1.0.0.bbuild"));
 
-    let stdout = run_bpt_verify!(per_test_path!("fakeblock.bbuild")).unwrap();
+    let stdout = run_bpt_verify!(per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Verified"));
-    assert!(stdout.contains("fakeblock.bbuild"));
+    assert!(stdout.contains("fakeblock@1.0.0.bbuild"));
 
-    let stdout = run_bpt_sign!(per_test_path!("fakeblock.bbuild")).unwrap();
+    let stdout = run_bpt_sign!(per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Signed"));
-    assert!(stdout.contains("fakeblock.bbuild"));
+    assert!(stdout.contains("fakeblock@1.0.0.bbuild"));
 
-    let _ = run_bpt_verify!(per_test_path!("fakeblock.bbuild")).unwrap();
+    let _ = run_bpt_verify!(per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
 }
 
 #[ignore = "Decrypts test private key; slow."]
@@ -91,8 +91,8 @@ fn sign_already_signed() {
 fn sign_invalid_signature() {
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
@@ -100,23 +100,23 @@ fn sign_invalid_signature() {
     let mut file = std::fs::OpenOptions::new()
         .read(true)
         .write(true)
-        .open(per_test_path!("fakeblock.bbuild"))
+        .open(per_test_path!("fakeblock@1.0.0.bbuild"))
         .unwrap();
     file.seek(std::io::SeekFrom::End(0)).unwrap();
     file.write_all(INVALID_SIGNATURE.as_bytes()).unwrap();
     drop(file);
 
-    let result = run_bpt_verify!(per_test_path!("fakeblock.bbuild"));
+    let result = run_bpt_verify!(per_test_path!("fakeblock@1.0.0.bbuild"));
     assert!(result.is_err());
     let stdout = result.unwrap_err();
     assert!(stdout.contains("No configured public key verifies"));
-    assert!(stdout.contains("fakeblock.bbuild"));
+    assert!(stdout.contains("fakeblock@1.0.0.bbuild"));
 
-    let stdout = run_bpt_sign!(per_test_path!("fakeblock.bbuild")).unwrap();
+    let stdout = run_bpt_sign!(per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Signed"));
-    assert!(stdout.contains("fakeblock.bbuild"));
+    assert!(stdout.contains("fakeblock@1.0.0.bbuild"));
 
-    let _ = run_bpt_verify!(per_test_path!("fakeblock.bbuild")).unwrap();
+    let _ = run_bpt_verify!(per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
 }
 
 #[ignore = "Decrypts test private key; slow."]
@@ -125,8 +125,8 @@ fn sign_invalid_signature() {
 fn sign_corrupt_signature() {
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
@@ -134,25 +134,25 @@ fn sign_corrupt_signature() {
     let mut file = std::fs::OpenOptions::new()
         .read(true)
         .write(true)
-        .open(per_test_path!("fakeblock.bbuild"))
+        .open(per_test_path!("fakeblock@1.0.0.bbuild"))
         .unwrap();
     file.seek(std::io::SeekFrom::End(0)).unwrap();
     file.write_all(CORRUPT_SIGNATURE.as_bytes()).unwrap();
     drop(file);
 
-    let result = run_bpt_verify!(per_test_path!("fakeblock.bbuild"));
+    let result = run_bpt_verify!(per_test_path!("fakeblock@1.0.0.bbuild"));
     assert!(result.is_err());
     let stdout = result.unwrap_err();
     println!("{:?}", stdout);
     assert!(stdout.contains("Signature for"));
-    assert!(stdout.contains("fakeblock.bbuild"));
+    assert!(stdout.contains("fakeblock@1.0.0.bbuild"));
     assert!(stdout.contains("is corrupt"));
 
-    let stdout = run_bpt_sign!(per_test_path!("fakeblock.bbuild")).unwrap();
+    let stdout = run_bpt_sign!(per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Signed"));
-    assert!(stdout.contains("fakeblock.bbuild"));
+    assert!(stdout.contains("fakeblock@1.0.0.bbuild"));
 
-    let _ = run_bpt_verify!(per_test_path!("fakeblock.bbuild")).unwrap();
+    let _ = run_bpt_verify!(per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
 }
 
 #[test]
@@ -160,8 +160,8 @@ fn sign_corrupt_signature() {
 fn sign_missing_passphrase_file_errors() {
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
 
@@ -177,7 +177,7 @@ fn sign_missing_passphrase_file_errors() {
             "--priv-key-passphrase-file",
             per_test_path!("does-not-exist.passphrase"),
             "sign",
-            per_test_path!("fakeblock.bbuild"),
+            per_test_path!("fakeblock@1.0.0.bbuild"),
         ])
         .output()
         .expect("failed to execute bpt");
@@ -193,13 +193,13 @@ fn sign_missing_passphrase_file_errors() {
 fn sign_needed_skips_already_valid_file_without_decrypting_key() {
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
-    let _ = run_bpt_sign!(per_test_path!("fakeblock.bbuild")).unwrap();
+    let _ = run_bpt_sign!(per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
 
-    let before = std::fs::metadata(per_test_path!("fakeblock.bbuild"))
+    let before = std::fs::metadata(per_test_path!("fakeblock@1.0.0.bbuild"))
         .unwrap()
         .modified()
         .unwrap();
@@ -212,7 +212,7 @@ fn sign_needed_skips_already_valid_file_without_decrypting_key() {
             per_test_path!(),
             "sign",
             "--needed",
-            per_test_path!("fakeblock.bbuild"),
+            per_test_path!("fakeblock@1.0.0.bbuild"),
         ])
         .output()
         .expect("failed to execute bpt");
@@ -221,7 +221,7 @@ fn sign_needed_skips_already_valid_file_without_decrypting_key() {
     assert!(stdout.contains("All 1 files already had valid signatures"));
     assert!(!stdout.contains("Decrypting secret key"));
 
-    let after = std::fs::metadata(per_test_path!("fakeblock.bbuild"))
+    let after = std::fs::metadata(per_test_path!("fakeblock@1.0.0.bbuild"))
         .unwrap()
         .modified()
         .unwrap();
@@ -234,21 +234,21 @@ fn sign_needed_skips_already_valid_file_without_decrypting_key() {
 fn sign_needed_only_resigns_invalid_files() {
     setup_test!();
     std::fs::copy(
-        repo_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock.bbuild"),
+        repo_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock@1.0.0.bbuild"),
     )
     .unwrap();
     std::fs::copy(
-        repo_path!("fakeblock-songs.bbuild"),
-        per_test_path!("fakeblock-songs.bbuild"),
+        repo_path!("fakeblock-songs@1.0.0.bbuild"),
+        per_test_path!("fakeblock-songs@1.0.0.bbuild"),
     )
     .unwrap();
 
-    let valid_before = std::fs::metadata(per_test_path!("fakeblock.bbuild"))
+    let valid_before = std::fs::metadata(per_test_path!("fakeblock@1.0.0.bbuild"))
         .unwrap()
         .modified()
         .unwrap();
-    let invalid_before = std::fs::metadata(per_test_path!("fakeblock-songs.bbuild"))
+    let invalid_before = std::fs::metadata(per_test_path!("fakeblock-songs@1.0.0.bbuild"))
         .unwrap()
         .modified()
         .unwrap();
@@ -256,7 +256,7 @@ fn sign_needed_only_resigns_invalid_files() {
     let mut file = std::fs::OpenOptions::new()
         .read(true)
         .write(true)
-        .open(per_test_path!("fakeblock-songs.bbuild"))
+        .open(per_test_path!("fakeblock-songs@1.0.0.bbuild"))
         .unwrap();
     file.seek(std::io::SeekFrom::End(0)).unwrap();
     file.write_all(b"\n# bpt-sig-v1:corrupt+signature\n")
@@ -278,8 +278,8 @@ fn sign_needed_only_resigns_invalid_files() {
             common_path!("etc/bpt/private-keys/test-key-password-is-bpt.passphrase"),
             "sign",
             "--needed",
-            per_test_path!("fakeblock.bbuild"),
-            per_test_path!("fakeblock-songs.bbuild"),
+            per_test_path!("fakeblock@1.0.0.bbuild"),
+            per_test_path!("fakeblock-songs@1.0.0.bbuild"),
         ])
         .output()
         .expect("failed to execute bpt");
@@ -287,11 +287,11 @@ fn sign_needed_only_resigns_invalid_files() {
     let stdout = String::from_utf8_lossy(&result.stdout);
     assert!(stdout.contains("Signed 1 of 2 files"));
 
-    let valid_after = std::fs::metadata(per_test_path!("fakeblock.bbuild"))
+    let valid_after = std::fs::metadata(per_test_path!("fakeblock@1.0.0.bbuild"))
         .unwrap()
         .modified()
         .unwrap();
-    let invalid_after = std::fs::metadata(per_test_path!("fakeblock-songs.bbuild"))
+    let invalid_after = std::fs::metadata(per_test_path!("fakeblock-songs@1.0.0.bbuild"))
         .unwrap()
         .modified()
         .unwrap();
@@ -306,8 +306,8 @@ fn sign_needed_only_resigns_invalid_files() {
     );
 
     let _ = run_bpt_verify!(
-        per_test_path!("fakeblock.bbuild"),
-        per_test_path!("fakeblock-songs.bbuild")
+        per_test_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock-songs@1.0.0.bbuild")
     )
     .unwrap();
 }
