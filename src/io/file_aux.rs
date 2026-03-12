@@ -4,7 +4,7 @@ use camino::Utf8Path;
 use std::{
     fs::{File, OpenOptions},
     io::{Seek, SeekFrom, Write},
-    os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, OwnedFd},
+    os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd},
 };
 
 pub trait FileAux {
@@ -50,14 +50,6 @@ pub trait FileAux {
     /// If the file is larger than SMALL_FILE_MAX_SIZE, error.
     #[cfg(test)]
     fn read_small_file_bytes(&mut self) -> Result<Vec<u8>, AnonLocErr>;
-}
-
-pub trait BorrowedFdAux {
-    /// By default, Rust's `File` type sets `O_CLOEXEC`.  This means the child shell process will not
-    /// be able to read the file descriptor.  If we want the child process to read it, unset the flag.
-    fn unset_cloexec(&self) -> Result<(), AnonLocErr>
-    where
-        Self: Sized;
 }
 
 impl FileAux for File {
@@ -269,15 +261,6 @@ fn lock(file: &File, lock_name: &str, read_only: bool) -> Result<(), AnonLocErr>
             println!("failed.");
             Err(AnonLocErr::Lock(e.into()))
         }
-    }
-}
-
-impl BorrowedFdAux for BorrowedFd<'_> {
-    fn unset_cloexec(&self) -> Result<(), AnonLocErr> {
-        let arg = nix::fcntl::FcntlArg::F_SETFD(nix::fcntl::FdFlag::empty());
-        nix::fcntl::fcntl(self.as_raw_fd(), arg)
-            .map_err(|e| AnonLocErr::Fcntl(e.into()))
-            .map(|_| ())
     }
 }
 

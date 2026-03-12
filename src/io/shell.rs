@@ -10,9 +10,9 @@ use std::fs::File;
 use std::{
     collections::HashMap,
     ffi::{CStr, CString},
-    io::ErrorKind,
     io::Write,
-    os::fd::{AsRawFd, BorrowedFd},
+    io::{ErrorKind, Seek, SeekFrom},
+    os::fd::{AsRawFd, BorrowedFd, FromRawFd, OwnedFd},
     process::exit,
 };
 
@@ -41,6 +41,29 @@ fn drop_process_credentials(creds: &ProcessCredentials) -> Result<(), AnonLocErr
     Ok(())
 }
 
+fn append_inline_shell_scripts(
+    cmd: &mut String,
+    script_fds: &[BorrowedFd],
+) -> Result<(), AnonLocErr> {
+    for fd in script_fds {
+        // `dup()` shares the underlying file description, so restore the original offset after
+        // reading to avoid mutating the caller-visible fd state.
+        let fd = nix::unistd::dup(fd.as_raw_fd()).map_err(AnonLocErr::Dup)?;
+        // Safety: `dup()` returned a fresh owned fd.
+        let mut file = File::from(unsafe { OwnedFd::from_raw_fd(fd) });
+        let pos = file.stream_position().map_err(AnonLocErr::Seek)?;
+        file.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
+        let script = file.read_small_file_string()?;
+        file.seek(SeekFrom::Start(pos)).map_err(AnonLocErr::Seek)?;
+        cmd.push_str(&script);
+        if !script.ends_with('\n') {
+            cmd.push('\n');
+        }
+    }
+
+    Ok(())
+}
+
 /// Source shell scripts with a given set of input variables and capture the resulting variables.
 ///
 /// Only use shell-friendly variable names, as this can otherwise be used to inject arbitrary shell
@@ -60,20 +83,18 @@ pub fn query_shell_scripts(
     );
 
     // Construct a command which sources the scripts and writes the requested resulting variables
-    // back via a pipe.  Read results through `/proc/self/fd/{}` to ensure this works transparently
-    // cross-stratum.
+    // back via the inherited pipe fd.
     //
     // The resulting string looks something like:
     // ```sh
-    // set -eu; . /proc/self/fd/3 && . /proc/self/fd/4 && printf "VAR1=%s\0VAR2=%s\0" "${VAR1:-}" "${VAR2:-}" > /proc/self/fd/5
+    // set -eu;
+    // <contents of script 1>
+    // <contents of script 2>
+    // printf "VAR1=%s\0VAR2=%s\0" "${VAR1:-}" "${VAR2:-}" >&5
     // ```
     let mut cmd = String::new();
     cmd.push_str("set -eu; ");
-    for fd in script_fds {
-        // Needs to be inherited by child process
-        fd.unset_cloexec()?;
-        cmd.push_str(&format!(". /proc/self/fd/{} && ", fd.as_raw_fd()));
-    }
+    append_inline_shell_scripts(&mut cmd, script_fds)?;
     cmd.push_str("printf \"");
     for var in output_vars {
         cmd.push_str(var);
@@ -85,7 +106,7 @@ pub fn query_shell_scripts(
         cmd.push_str(var);
         cmd.push_str(":-}\" ");
     }
-    cmd.push_str(&format!("> /proc/self/fd/{pipe_write}\0"));
+    cmd.push_str(&format!(">&{pipe_write}\0"));
 
     // Safety: `fork()` is `unsafe{}` because of concerns around signal handling safety.
     // We're just setting envvars and `exec`ing, which are signal safe.
@@ -185,19 +206,18 @@ pub fn run_shell_scripts(
 ) -> Result<(), AnonLocErr> {
     let (pipe_read, pipe_write) = pipe().map_err(|e| AnonLocErr::CreatePipe(e.into()))?;
 
-    // Construct a command which sources the fds and runs the specified command.
+    // Construct a command which sources the script contents and runs the specified command.
     //
     // The resulting string looks something like:
     // ```sh
-    // set -eu; . /proc/self/fd/3 && . /proc/self/fd/4 && cd ${cwd} && set -eux && ${command}
+    // set -eu;
+    // <contents of script 1>
+    // <contents of script 2>
+    // cd ${cwd} && set -eux && ${command}
     // ```
     let mut cmd = String::new();
     cmd.push_str("set -eu; ");
-    for fd in script_fds {
-        // Needs to be inherited by child process
-        fd.unset_cloexec()?;
-        cmd.push_str(&format!(". /proc/self/fd/{} && ", fd.as_raw_fd()));
-    }
+    append_inline_shell_scripts(&mut cmd, script_fds)?;
     // Pass cwd via env var rather than interpolating into the command string to avoid
     // shell injection from paths containing characters like $, `, ", etc.
     cmd.push_str("cd \"${BPT_CWD}\" && ");
@@ -275,5 +295,53 @@ pub fn run_shell_scripts(
         Ok(WaitStatus::Exited(_, rv)) => Err(AnonLocErr::ShellNonZero(rv)),
         Ok(w) => Err(AnonLocErr::ShellWaitStatus(w)),
         Err(e) => Err(AnonLocErr::ShellWait(e.into())),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{io::FileAux, testutil::unit_test_tmp_dir};
+    use camino::Utf8PathBuf;
+    use std::{
+        fs,
+        os::{fd::AsFd, unix::fs::PermissionsExt},
+    };
+
+    fn create_unreadable_script(test_name: &str, contents: &str) -> (Utf8PathBuf, File) {
+        let dir = unit_test_tmp_dir("shell", test_name);
+        let path = dir.join("script.sh");
+        fs::write(&path, contents).unwrap();
+        let file = File::open_ro(&path).unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o000)).unwrap();
+        (dir, file)
+    }
+
+    #[test]
+    fn query_shell_scripts_reads_open_script_after_path_becomes_unreadable() {
+        let (_dir, file) = create_unreadable_script(
+            "query_shell_scripts_reads_open_script_after_path_becomes_unreadable",
+            "#!/bin/sh\npkgname=\"from-open-fd\"\n",
+        );
+
+        let vars =
+            query_shell_scripts(&[file.as_fd()], &HashMap::new(), &["pkgname"], None).unwrap();
+
+        assert_eq!(vars.get("pkgname"), Some(&"from-open-fd".to_owned()));
+    }
+
+    #[test]
+    fn run_shell_scripts_executes_open_script_after_path_becomes_unreadable() {
+        let (dir, file) = create_unreadable_script(
+            "run_shell_scripts_executes_open_script_after_path_becomes_unreadable",
+            "#!/bin/sh\nbuild() {\n\tprintf 'built-from-open-fd\\n'\n}\n",
+        );
+        let log_path = dir.join("build.log");
+        let log = File::create(&log_path).unwrap();
+
+        run_shell_scripts(&[file.as_fd()], &HashMap::new(), "build", &dir, log, None).unwrap();
+
+        let log = fs::read_to_string(&log_path).unwrap();
+        assert!(log.contains("built-from-open-fd"));
     }
 }
