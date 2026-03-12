@@ -9,7 +9,7 @@ name = "bpt"
 readme = "README.md"
 repository = "https://github.com/bedrocklinux/bpt"
 rust-version = "1.85.0"
-version = "0.1.4"
+version = "0.1.5"
 include = [
 	"/Cargo.toml",
 	"/Cargo.lock",
