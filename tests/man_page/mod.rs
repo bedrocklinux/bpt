@@ -283,6 +283,25 @@ fn rendered_man_page(path: &str) -> String {
     String::from_utf8(output.stdout).expect("scdoc output was not UTF-8")
 }
 
+fn normalize_rendered_man_page(man: &str) -> String {
+    man.lines()
+        .map(|line| {
+            if line.starts_with(".TH ") {
+                let mut parts = line.split('"');
+                let prefix = parts.next().unwrap_or("");
+                let title = parts.next().unwrap_or("");
+                let middle = parts.next().unwrap_or("");
+                let section = parts.next().unwrap_or("");
+                if !title.is_empty() && !section.is_empty() {
+                    return format!("{prefix}\"{title}\"{middle}\"{section}\" \"<date>\"");
+                }
+            }
+            line.to_owned()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 #[test]
 fn man_page_command_list_matches_current_cli_surface() {
     assert_eq!(
@@ -350,8 +369,10 @@ fn man_page_see_also_targets_exist() {
 #[test]
 fn rendered_bpt_man_page_matches_source() {
     assert_eq!(
-        std::fs::read_to_string("doc/man/bpt.1").expect("failed to read rendered man page"),
-        rendered_man_page("doc/man/bpt.1.scd"),
+        normalize_rendered_man_page(
+            &std::fs::read_to_string("doc/man/bpt.1").expect("failed to read rendered man page")
+        ),
+        normalize_rendered_man_page(&rendered_man_page("doc/man/bpt.1.scd")),
         "doc/man/bpt.1 is out of date with doc/man/bpt.1.scd"
     );
 }
@@ -359,8 +380,11 @@ fn rendered_bpt_man_page_matches_source() {
 #[test]
 fn rendered_bpt_conf_man_page_matches_source() {
     assert_eq!(
-        std::fs::read_to_string("doc/man/bpt.conf.5").expect("failed to read rendered man page"),
-        rendered_man_page("doc/man/bpt.conf.5.scd"),
+        normalize_rendered_man_page(
+            &std::fs::read_to_string("doc/man/bpt.conf.5")
+                .expect("failed to read rendered man page")
+        ),
+        normalize_rendered_man_page(&rendered_man_page("doc/man/bpt.conf.5.scd")),
         "doc/man/bpt.conf.5 is out of date with doc/man/bpt.conf.5.scd"
     );
 }
