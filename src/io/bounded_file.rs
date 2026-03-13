@@ -1,4 +1,6 @@
-use crate::{error::*, io::*};
+#[cfg(test)]
+use crate::io::FileAux;
+use crate::{constant::SMALL_FILE_MAX_SIZE, error::*};
 #[cfg(test)]
 use std::os::fd::OwnedFd;
 use std::{
@@ -137,13 +139,29 @@ impl BoundedFile {
 
     #[cfg(test)]
     pub fn read_small_file_string(&mut self) -> Result<String, AnonLocErr> {
-        let remaining = self.upper.saturating_sub(self.pos);
-        read_small_file_string(self, remaining)
+        let len = self.upper.saturating_sub(self.lower);
+        if len > SMALL_FILE_MAX_SIZE as u64 {
+            return Err(AnonLocErr::FileTooLarge(SMALL_FILE_MAX_SIZE));
+        }
+
+        self.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
+
+        let mut buf = String::new();
+        self.read_to_string(&mut buf).map_err(AnonLocErr::Read)?;
+        Ok(buf)
     }
 
     pub fn read_small_file_bytes(&mut self) -> Result<Vec<u8>, AnonLocErr> {
-        let remaining = self.upper.saturating_sub(self.pos);
-        read_small_file_bytes(self, remaining)
+        let len = self.upper.saturating_sub(self.lower);
+        if len > SMALL_FILE_MAX_SIZE as u64 {
+            return Err(AnonLocErr::FileTooLarge(SMALL_FILE_MAX_SIZE));
+        }
+
+        self.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
+
+        let mut buf = Vec::new();
+        self.read_to_end(&mut buf).map_err(AnonLocErr::Read)?;
+        Ok(buf)
     }
 }
 
@@ -824,11 +842,11 @@ mod tests {
         file.seek(SeekFrom::Start(2)).unwrap();
 
         let out = file.read_small_file_string().unwrap();
-        assert_eq!(out, "hijklmno");
+        assert_eq!(out, "fghijklmno");
     }
 
     #[test]
-    fn test_read_small_file_bytes_uses_bounded_remaining_len_for_size_check() {
+    fn test_read_small_file_bytes_uses_bounded_file_size() {
         let data = vec![b'x'; SMALL_FILE_MAX_SIZE + 5];
         let mut file = BoundedFile::create_memfd(TMPNAME, &data).unwrap();
 
@@ -836,8 +854,7 @@ mod tests {
             .unwrap();
 
         let out = file.read_small_file_bytes().unwrap();
-        assert_eq!(out.len(), 5);
-        assert!(out.iter().all(|b| *b == b'x'));
+        assert_eq!(out, vec![b'x'; 5]);
     }
 
     #[test]

@@ -1,9 +1,10 @@
 //! Auxiliary helper methods for std::fs::File
-use crate::{error::*, io::*};
+use crate::constant::SMALL_FILE_MAX_SIZE;
+use crate::error::*;
 use camino::Utf8Path;
 use std::{
     fs::{File, OpenOptions},
-    io::{Seek, SeekFrom, Write},
+    io::{Read, Seek, SeekFrom, Write},
     os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd},
 };
 
@@ -206,19 +207,29 @@ impl FileAux for File {
 
     fn read_small_file_string(&mut self) -> Result<String, AnonLocErr> {
         let len = self.metadata().map_err(AnonLocErr::Stat)?.len();
-        let pos = self.stream_position().map_err(AnonLocErr::Seek)?;
-        let remaining = len.saturating_sub(pos);
+        if len > SMALL_FILE_MAX_SIZE as u64 {
+            return Err(AnonLocErr::FileTooLarge(SMALL_FILE_MAX_SIZE));
+        }
 
-        read_small_file_string(self, remaining)
+        self.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
+
+        let mut buf = String::new();
+        self.read_to_string(&mut buf).map_err(AnonLocErr::Read)?;
+        Ok(buf)
     }
 
     #[cfg(test)]
     fn read_small_file_bytes(&mut self) -> Result<Vec<u8>, AnonLocErr> {
         let len = self.metadata().map_err(AnonLocErr::Stat)?.len();
-        let pos = self.stream_position().map_err(AnonLocErr::Seek)?;
-        let remaining = len.saturating_sub(pos);
+        if len > SMALL_FILE_MAX_SIZE as u64 {
+            return Err(AnonLocErr::FileTooLarge(SMALL_FILE_MAX_SIZE));
+        }
 
-        read_small_file_bytes(self, remaining)
+        self.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
+
+        let mut buf = Vec::new();
+        self.read_to_end(&mut buf).map_err(AnonLocErr::Read)?;
+        Ok(buf)
     }
 }
 
@@ -302,33 +313,31 @@ mod tests {
     }
 
     #[test]
-    fn read_small_file_bytes_uses_remaining_len_from_current_position() {
-        let dir = test_dir("read_small_file_bytes_uses_remaining_len_from_current_position");
+    fn read_small_file_bytes_reads_entire_file_from_start() {
+        let dir = test_dir("read_small_file_bytes_reads_entire_file_from_start");
         let path = dir.join("large.bin");
-        let input = vec![9_u8; SMALL_FILE_MAX_SIZE + 5];
+        let input = vec![9_u8; SMALL_FILE_MAX_SIZE];
         std::fs::write(&path, &input).unwrap();
 
         let mut file = File::open_ro(path.as_path()).unwrap();
         file.seek(SeekFrom::Start(10)).unwrap();
 
         let out = file.read_small_file_bytes().unwrap();
-        assert_eq!(out.len(), SMALL_FILE_MAX_SIZE - 5);
-        assert!(out.iter().all(|b| *b == 9));
+        assert_eq!(out, input);
     }
 
     #[test]
-    fn read_small_file_string_uses_remaining_len_from_current_position() {
-        let dir = test_dir("read_small_file_string_uses_remaining_len_from_current_position");
-        let path = dir.join("large.txt");
-        let input = "a".repeat(SMALL_FILE_MAX_SIZE + 5);
+    fn read_small_file_string_reads_entire_file_from_start() {
+        let dir = test_dir("read_small_file_string_reads_entire_file_from_start");
+        let path = dir.join("small.txt");
+        let input = "a".repeat(SMALL_FILE_MAX_SIZE);
         std::fs::write(&path, input.as_bytes()).unwrap();
 
         let mut file = File::open_ro(path.as_path()).unwrap();
         file.seek(SeekFrom::Start(10)).unwrap();
 
         let out = file.read_small_file_string().unwrap();
-        assert_eq!(out.len(), SMALL_FILE_MAX_SIZE - 5);
-        assert!(out.chars().all(|c| c == 'a'));
+        assert_eq!(out, input);
     }
 
     #[test]
