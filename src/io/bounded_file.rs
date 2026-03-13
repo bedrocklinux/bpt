@@ -107,7 +107,6 @@ impl BoundedFile {
         Ok(())
     }
 
-    #[cfg(test)]
     pub fn increase_upper_bound_by(&mut self, offset: u64) -> Result<(), AnonLocErr> {
         let new_upper = self.upper.checked_add(offset).ok_or_else(|| {
             AnonLocErr::Seek(Error::new(
@@ -136,7 +135,6 @@ impl BoundedFile {
         Ok(())
     }
 
-    #[cfg(test)]
     #[cfg(test)]
     pub fn read_small_file_string(&mut self) -> Result<String, AnonLocErr> {
         let remaining = self.upper.saturating_sub(self.pos);

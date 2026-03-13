@@ -4,10 +4,10 @@ use std::fs::File;
 
 fn needs_signing(path: &Utf8PathBuf, pubkeys: &PublicKeys) -> Result<bool, Err> {
     let file = File::open_ro(path)?;
-    let mut bf = BoundedFile::from_file(file).loc(path)?;
+    let bf = BoundedFile::from_file(file).loc(path)?;
 
     match bf.verify_sig(pubkeys) {
-        Ok(()) => Ok(false),
+        Ok(_) => Ok(false),
         Err(
             AnonLocErr::SigCorrupt
             | AnonLocErr::SigInvalid

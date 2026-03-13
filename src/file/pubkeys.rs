@@ -2,7 +2,7 @@ use crate::file::sig::*;
 use crate::{cli::CommonFlags, constant::*, error::*, io::*, location::*, str::Base64Decode};
 use minisign::{SignatureBones, SignatureBox};
 use std::fs::File;
-use std::io::{ErrorKind, Read, Seek, SeekFrom};
+use std::io::{ErrorKind, Seek, SeekFrom};
 
 /// Public keys used to verify various bpt files.
 /// Supports mixed key formats detected by file content.
@@ -56,50 +56,13 @@ impl PublicKeys {
     }
 }
 
-fn verify_file(mut file: BoundedFile, pubkeys: &PublicKeys) -> Result<BoundedFile, AnonLocErr> {
-    let sig_loc = match (file.find_signature()?, pubkeys) {
-        // Signature found — proceed below
-        (FindSigResult::Found(loc), _) => loc,
-        // Corrupt signature — always an error
-        (FindSigResult::Corrupt, _) => return Err(AnonLocErr::SigCorrupt),
-        // No signature, skip-verify — return whole file
-        (FindSigResult::NotFound, PublicKeys::SkipVerify) => {
-            file.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
-            return Ok(file);
-        }
-        // No signature, verify required — error
-        (FindSigResult::NotFound, PublicKeys::VerifyWithKeys { .. }) => {
-            return Err(AnonLocErr::SigMissing);
-        }
-    };
-
-    let sig_size = sig_loc.file_len - sig_loc.content_len;
-
-    // If skip-verify, optionally strip the signature and return without verifying.
-    let keys = match (&sig_loc.format, pubkeys) {
-        (_, PublicKeys::SkipVerify) => {
-            file.decrease_upper_bound_by(sig_size)?;
-            file.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
-            return Ok(file);
-        }
-        (SigFormat::V1, PublicKeys::VerifyWithKeys { v1_keys, .. }) => v1_keys,
-    };
-    if keys.is_empty() {
-        return Err(AnonLocErr::NoPublicKeys);
-    }
-
-    // Dispatch verification based on signature format
-    match sig_loc.format {
-        SigFormat::V1 => verify_v1(file, &sig_loc, keys, sig_size),
-    }
-}
-
 /// Verify a v1 (minisign Ed25519) signature against the provided keys.
 fn verify_v1(
     mut file: BoundedFile,
     sig_loc: &SigLocation,
     keys: &[minisign::PublicKey],
     sig_size: u64,
+    strip_sig: bool,
 ) -> Result<BoundedFile, AnonLocErr> {
     // Decode signature
     let sig_decoded = sig_loc
@@ -109,72 +72,17 @@ fn verify_v1(
     let sig_bones = SignatureBones::from_bytes(&sig_decoded).map_err(|_| AnonLocErr::SigCorrupt)?;
     let sig_box: SignatureBox = sig_bones.into();
 
+    file.decrease_upper_bound_by(sig_size)?;
+
     // Verify signature against each key
     for key in keys {
         file.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
-        let mut limited = file.take(sig_loc.content_len);
-        if minisign::verify(key, &sig_box, &mut limited, true, false, false).is_ok() {
-            file = limited.into_inner();
-            file.decrease_upper_bound_by(sig_size)?;
+        if minisign::verify(key, &sig_box, &mut file, true, false, false).is_ok() {
+            if !strip_sig {
+                file.increase_upper_bound_by(sig_size)?;
+            }
             file.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
             return Ok(file);
-        }
-        file = limited.into_inner();
-    }
-
-    Err(AnonLocErr::SigInvalid)
-}
-
-fn check_sig(file: &mut (impl Read + Seek), pubkeys: &PublicKeys) -> Result<(), AnonLocErr> {
-    let sig_loc = match (file.find_signature()?, pubkeys) {
-        (FindSigResult::Found(loc), _) => loc,
-        (FindSigResult::Corrupt, _) => return Err(AnonLocErr::SigCorrupt),
-        (FindSigResult::NotFound, PublicKeys::SkipVerify) => {
-            file.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
-            return Ok(());
-        }
-        (FindSigResult::NotFound, PublicKeys::VerifyWithKeys { .. }) => {
-            return Err(AnonLocErr::SigMissing);
-        }
-    };
-
-    let keys = match (&sig_loc.format, pubkeys) {
-        (_, PublicKeys::SkipVerify) => {
-            file.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
-            return Ok(());
-        }
-        (SigFormat::V1, PublicKeys::VerifyWithKeys { v1_keys, .. }) => v1_keys,
-    };
-    if keys.is_empty() {
-        return Err(AnonLocErr::NoPublicKeys);
-    }
-
-    match sig_loc.format {
-        SigFormat::V1 => check_v1(file, &sig_loc, keys),
-    }
-}
-
-fn check_v1(
-    file: &mut (impl Read + Seek),
-    sig_loc: &SigLocation,
-    keys: &[minisign::PublicKey],
-) -> Result<(), AnonLocErr> {
-    let sig_decoded = sig_loc
-        .sig_base64
-        .base64_decode()
-        .map_err(|_| AnonLocErr::SigCorrupt)?;
-    let sig_bones = SignatureBones::from_bytes(&sig_decoded).map_err(|_| AnonLocErr::SigCorrupt)?;
-    let sig_box: SignatureBox = sig_bones.into();
-
-    for key in keys {
-        file.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
-        let verified = {
-            let mut limited = (&mut *file).take(sig_loc.content_len);
-            minisign::verify(key, &sig_box, &mut limited, true, false, false).is_ok()
-        };
-        if verified {
-            file.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
-            return Ok(());
         }
     }
 
@@ -182,7 +90,9 @@ fn check_v1(
 }
 
 pub trait VerifySignature {
-    fn verify_sig(&mut self, pubkeys: &PublicKeys) -> Result<(), AnonLocErr>;
+    fn verify_sig(self, pubkeys: &PublicKeys) -> Result<Self, AnonLocErr>
+    where
+        Self: Sized;
 
     fn verify_and_strip_sig(self, pubkeys: &PublicKeys) -> Result<BoundedFile, AnonLocErr>
     where
@@ -190,23 +100,84 @@ pub trait VerifySignature {
 }
 
 impl VerifySignature for File {
-    fn verify_sig(&mut self, pubkeys: &PublicKeys) -> Result<(), AnonLocErr> {
-        check_sig(self, pubkeys)
+    fn verify_sig(self, pubkeys: &PublicKeys) -> Result<Self, AnonLocErr> {
+        BoundedFile::from_file(self)?
+            .verify_sig(pubkeys)
+            .map(BoundedFile::into_inner)
     }
 
     fn verify_and_strip_sig(self, pubkeys: &PublicKeys) -> Result<BoundedFile, AnonLocErr> {
-        let bf = BoundedFile::from_file(self)?;
-        verify_file(bf, pubkeys)
+        BoundedFile::from_file(self)?.verify_and_strip_sig(pubkeys)
     }
 }
 
 impl VerifySignature for BoundedFile {
-    fn verify_sig(&mut self, pubkeys: &PublicKeys) -> Result<(), AnonLocErr> {
-        check_sig(self, pubkeys)
+    fn verify_sig(mut self, pubkeys: &PublicKeys) -> Result<Self, AnonLocErr> {
+        let sig_loc = match (self.find_signature()?, pubkeys) {
+            (FindSigResult::Found(loc), _) => loc,
+            (FindSigResult::Corrupt, _) => return Err(AnonLocErr::SigCorrupt),
+            (FindSigResult::NotFound, PublicKeys::SkipVerify) => {
+                self.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
+                return Ok(self);
+            }
+            (FindSigResult::NotFound, PublicKeys::VerifyWithKeys { .. }) => {
+                return Err(AnonLocErr::SigMissing);
+            }
+        };
+
+        let keys = match (&sig_loc.format, pubkeys) {
+            (_, PublicKeys::SkipVerify) => {
+                self.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
+                return Ok(self);
+            }
+            (SigFormat::V1, PublicKeys::VerifyWithKeys { v1_keys, .. }) => v1_keys,
+        };
+        if keys.is_empty() {
+            return Err(AnonLocErr::NoPublicKeys);
+        }
+
+        match sig_loc.format {
+            SigFormat::V1 => {
+                let sig_size = sig_loc.file_len - sig_loc.content_len;
+                let mut verified = verify_v1(self, &sig_loc, keys, sig_size, false)?;
+                verified
+                    .seek(SeekFrom::Start(0))
+                    .map_err(AnonLocErr::Seek)?;
+                Ok(verified)
+            }
+        }
     }
 
     fn verify_and_strip_sig(self, pubkeys: &PublicKeys) -> Result<BoundedFile, AnonLocErr> {
-        verify_file(self, pubkeys)
+        let mut file = self;
+        let sig_loc = match (file.find_signature()?, pubkeys) {
+            (FindSigResult::Found(loc), _) => loc,
+            (FindSigResult::Corrupt, _) => return Err(AnonLocErr::SigCorrupt),
+            (FindSigResult::NotFound, PublicKeys::SkipVerify) => {
+                file.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
+                return Ok(file);
+            }
+            (FindSigResult::NotFound, PublicKeys::VerifyWithKeys { .. }) => {
+                return Err(AnonLocErr::SigMissing);
+            }
+        };
+
+        let sig_size = sig_loc.file_len - sig_loc.content_len;
+        let keys = match (&sig_loc.format, pubkeys) {
+            (_, PublicKeys::SkipVerify) => {
+                file.decrease_upper_bound_by(sig_size)?;
+                file.seek(SeekFrom::Start(0)).map_err(AnonLocErr::Seek)?;
+                return Ok(file);
+            }
+            (SigFormat::V1, PublicKeys::VerifyWithKeys { v1_keys, .. }) => v1_keys,
+        };
+        if keys.is_empty() {
+            return Err(AnonLocErr::NoPublicKeys);
+        }
+
+        match sig_loc.format {
+            SigFormat::V1 => verify_v1(file, &sig_loc, keys, sig_size, true),
+        }
     }
 }
 
@@ -219,7 +190,7 @@ mod tests {
     use crate::io::FileAux;
     use crate::location::RootDir;
     use crate::testutil::unit_test_tmp_dir;
-    use std::io::Write;
+    use std::io::{Read, Write};
 
     impl PublicKeys {
         pub fn from_test_key() -> PublicKeys {
@@ -242,10 +213,14 @@ mod tests {
         File::create_memfd(c"file-name", contents).unwrap()
     }
 
-    fn create_signed_file(contents: &[u8]) -> BoundedFile {
+    fn create_signed_raw_file(contents: &[u8]) -> File {
         let mut file = File::create_memfd(c"file-name", contents).unwrap();
         file.sign(&PrivKey::from_test_key()).unwrap();
-        BoundedFile::from_file(file).unwrap()
+        file
+    }
+
+    fn create_signed_file(contents: &[u8]) -> BoundedFile {
+        BoundedFile::from_file(create_signed_raw_file(contents)).unwrap()
     }
 
     #[test]
@@ -276,9 +251,25 @@ mod tests {
         let contents_with_sig = read_bounded_file(&mut file);
 
         let pubkeys = PublicKeys::from_test_key();
-        file.verify_sig(&pubkeys).unwrap();
+        let mut file = file.verify_sig(&pubkeys).unwrap();
 
         // Check that signature is not stripped
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf).unwrap();
+        assert_eq!(buf, contents_with_sig);
+    }
+
+    #[test]
+    fn test_verify_sig_valid_file() {
+        let contents = b"Test file contents";
+        let mut file = create_signed_raw_file(contents);
+        file.seek(SeekFrom::Start(0)).unwrap();
+        let mut contents_with_sig = Vec::new();
+        file.read_to_end(&mut contents_with_sig).unwrap();
+
+        let pubkeys = PublicKeys::from_test_key();
+        let mut file = file.verify_sig(&pubkeys).unwrap();
+
         let mut buf = Vec::new();
         file.read_to_end(&mut buf).unwrap();
         assert_eq!(buf, contents_with_sig);
@@ -292,7 +283,7 @@ mod tests {
         file.write_all("\n# bpt-sig-v1:RUSWg+V4uzz1zRLiMvYdSiKjPd86/ZZC8TYnsmwrPsYTr2NUmnG5fN+sHoLg90YU2tNXtYscxROVXgYh+O/L/R4/Z3wZKhjZ8QA\n".as_bytes()).unwrap();
 
         let pubkeys = PublicKeys::from_test_key();
-        let mut bf = BoundedFile::from_file(file).unwrap();
+        let bf = BoundedFile::from_file(file).unwrap();
         assert!(matches!(
             bf.verify_sig(&pubkeys),
             Err(AnonLocErr::SigInvalid)
@@ -308,7 +299,7 @@ mod tests {
             .unwrap();
 
         let pubkeys = PublicKeys::from_test_key();
-        let mut bf = BoundedFile::from_file(file).unwrap();
+        let bf = BoundedFile::from_file(file).unwrap();
         assert!(matches!(
             bf.verify_sig(&pubkeys),
             Err(AnonLocErr::SigCorrupt)
@@ -318,7 +309,7 @@ mod tests {
     #[test]
     fn test_verify_sig_missing() {
         let contents = b"Test file contents";
-        let mut file = create_unsigned_file(contents);
+        let file = create_unsigned_file(contents);
 
         let pubkeys = PublicKeys::from_test_key();
         assert!(matches!(
@@ -330,7 +321,7 @@ mod tests {
     #[test]
     fn test_verify_sig_no_public_keys() {
         let contents = b"Test file contents";
-        let mut file = create_signed_file(contents);
+        let file = create_signed_file(contents);
 
         let pubkeys = PublicKeys::VerifyWithKeys {
             v1_keys: Vec::new(),
@@ -420,7 +411,7 @@ mod tests {
             .unwrap();
 
         let pubkeys = PublicKeys::from_skipping_verification();
-        let mut bf = BoundedFile::from_file(file).unwrap();
+        let bf = BoundedFile::from_file(file).unwrap();
         assert!(matches!(
             bf.verify_sig(&pubkeys),
             Err(AnonLocErr::SigCorrupt)
@@ -434,7 +425,7 @@ mod tests {
         let contents_with_sig = read_bounded_file(&mut file);
 
         let pubkeys = PublicKeys::from_skipping_verification();
-        file.verify_sig(&pubkeys).unwrap();
+        let mut file = file.verify_sig(&pubkeys).unwrap();
 
         let mut buf = Vec::new();
         file.read_to_end(&mut buf).unwrap();

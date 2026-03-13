@@ -298,7 +298,7 @@ mod tests {
         assert!(contents_with_sig.starts_with(contents));
 
         let pubkeys = PublicKeys::from_test_key();
-        let mut bf = BoundedFile::from_file(file).unwrap();
+        let bf = BoundedFile::from_file(file).unwrap();
         assert!(bf.verify_sig(&pubkeys).is_ok());
     }
 
@@ -325,7 +325,7 @@ mod tests {
 
         // Validate the new signature
         let pubkeys = PublicKeys::from_test_key();
-        let mut bf = BoundedFile::from_file(file).unwrap();
+        let bf = BoundedFile::from_file(file).unwrap();
         assert!(bf.verify_sig(&pubkeys).is_ok());
     }
 
@@ -351,7 +351,7 @@ mod tests {
         );
 
         let pubkeys = PublicKeys::from_test_key();
-        let mut bf = BoundedFile::from_file(file).unwrap();
+        let bf = BoundedFile::from_file(file).unwrap();
         assert!(bf.verify_sig(&pubkeys).is_ok());
     }
 
@@ -377,7 +377,7 @@ mod tests {
 
         // Confirm no signature
         let pubkeys = PublicKeys::from_test_key();
-        let mut bf = BoundedFile::from_file(file).unwrap();
+        let bf = BoundedFile::from_file(file).unwrap();
         assert!(matches!(
             bf.verify_sig(&pubkeys),
             Err(AnonLocErr::SigMissing)

@@ -7,8 +7,10 @@ pub fn verify(flags: CommonFlags, paths: Vec<Utf8PathBuf>) -> Result<String, Err
 
     for path in paths.iter() {
         let file = File::open_ro(path)?;
-        let mut bf = BoundedFile::from_file(file).loc(path)?;
-        bf.verify_sig(&pubkeys).loc(path)?;
+        BoundedFile::from_file(file)
+            .loc(path)?
+            .verify_sig(&pubkeys)
+            .loc(path)?;
     }
 
     if paths.len() == 1 {
