@@ -2,7 +2,6 @@ use crate::{constant::*, error::*, io::*, str::*};
 use camino::Utf8Path;
 use nix::{
     libc::{PIPE_BUF, STDERR_FILENO, STDOUT_FILENO},
-    poll::{PollFd, PollFlags, poll},
     sys::wait::{WaitStatus, waitpid},
     unistd::{ForkResult, Gid, Uid, close, dup2, execvp, fork, pipe, read, setgid, setuid},
 };
@@ -307,17 +306,17 @@ pub fn run_shell_scripts(
     };
     close(pipe_write).map_err(|e| AnonLocErr::ClosePipe(e.into()))?;
 
-    // `tee` stdout/stderr to file and stdout
+    // `tee` stdout/stderr to file and stdout. Drain the pipe to EOF in the helper thread so
+    // the parent cannot race it by closing the shared read fd before all output is copied.
     let tee = std::thread::spawn(move || -> Result<(), AnonLocErr> {
         let mut buf = [b'\0'; PIPE_BUF];
         let mut stdout = std::io::stdout().lock();
-        let mut pollfds = [PollFd::new(
-            pipe_read,
-            PollFlags::POLLIN | PollFlags::POLLHUP,
-        )];
-        while poll(&mut pollfds, -1).is_ok() {
-            if pollfds[0].revents().unwrap().contains(PollFlags::POLLIN) {
-                if let Ok(bytes_read) = read(pipe_read, &mut buf) {
+        loop {
+            match read(pipe_read, &mut buf) {
+                Err(nix::errno::Errno::EINTR) => continue,
+                Err(e) => return Err(AnonLocErr::ReadPipe(e.into())),
+                Ok(0) => break,
+                Ok(bytes_read) => {
                     stdout
                         .write_all(&buf[..bytes_read])
                         .map_err(AnonLocErr::Write)?;
@@ -325,25 +324,20 @@ pub fn run_shell_scripts(
                         .map_err(AnonLocErr::Write)?;
                 }
             }
-            if pollfds[0].revents().unwrap().contains(PollFlags::POLLNVAL)
-                || pollfds[0].revents().unwrap().contains(PollFlags::POLLHUP)
-            {
-                break;
-            }
         }
+        close(pipe_read).map_err(|e| AnonLocErr::ClosePipe(e.into()))?;
         Ok(())
     });
 
-    match waitpid(child, None) {
-        Ok(WaitStatus::Exited(_, 0)) => {
-            close(pipe_read).map_err(|e| AnonLocErr::ClosePipe(e.into()))?;
-            tee.join().map_err(|_| AnonLocErr::UnexpectedData)??;
-            Ok(())
-        }
+    let wait_result = match waitpid(child, None) {
+        Ok(WaitStatus::Exited(_, 0)) => Ok(()),
         Ok(WaitStatus::Exited(_, rv)) => Err(AnonLocErr::ShellNonZero(rv)),
         Ok(w) => Err(AnonLocErr::ShellWaitStatus(w)),
         Err(e) => Err(AnonLocErr::ShellWait(e.into())),
-    }
+    };
+
+    tee.join().map_err(|_| AnonLocErr::UnexpectedData)??;
+    wait_result
 }
 
 #[cfg(test)]
