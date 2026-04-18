@@ -164,6 +164,8 @@ impl FileAux for File {
     }
 
     fn clone_anon_into(&mut self, dir: &Utf8Path) -> Result<Self, Err> {
+        self.rewind()
+            .map_err(|e| Err::Seek("<clone source>".to_string(), e))?;
         let mut new_file = File::create_anon(dir)?;
         std::io::copy(self, &mut new_file)
             .map_err(|e| Err::Write(dir.join("<anon>").into_string(), e))?;
