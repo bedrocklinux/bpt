@@ -25,8 +25,11 @@ pub fn initialize_color() {
     PRINT_COLOR.store(color, Ordering::Relaxed);
 }
 
+// Use only the basic 16 ANSI colors (codes 30-37 and 90-97) so that terminal
+// emulators can remap them to theme-appropriate values. This ensures readable
+// contrast on both light and dark backgrounds without any configuration on our end.
 const DEFAULT: &str = "\x1b[0m";
-const FG_BLUE: &str = "\x1b[0;38;5;33m";
+const FG_BLUE: &str = "\x1b[0;34m";
 const FG_CYAN: &str = "\x1b[0;36m";
 const FG_GRAY: &str = "\x1b[0;90m";
 const FG_GREEN: &str = "\x1b[0;32m";
