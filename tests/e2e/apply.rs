@@ -1,4 +1,3 @@
-use crate::e2e::instpkg_testutil::read;
 use crate::*;
 use ::function_name::named;
 use std::path::Path;
@@ -19,7 +18,7 @@ fn apply_world_add_installs_missing_package() {
     assert!(installed.contains("fakeblock@1.0.0:noarch"));
     assert!(installed.contains("fakeblock-songs@1.0.0:noarch"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert_eq!(world.trim(), "fakeblock");
 }
 
@@ -56,7 +55,7 @@ fn apply_dry_run_does_not_mutate_state() {
     assert!(stdout.contains("Install"));
     assert!(stdout.contains("Dry ran updated installed package set"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert_eq!(world.trim(), "fakeblock");
     assert!(
         !Path::new(per_test_path!(

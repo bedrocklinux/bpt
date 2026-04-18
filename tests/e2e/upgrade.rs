@@ -1,4 +1,4 @@
-use crate::e2e::instpkg_testutil::{read, write_modified_bbuild};
+use crate::e2e::common::bbuild::write_modified_bbuild;
 use crate::*;
 use ::function_name::named;
 
@@ -27,7 +27,7 @@ fn upgrade_path_bbuild_replaces_installed_version_and_updates_world_entry() {
     assert!(stdout.contains("from fakeblock@1.0.0:noarch"));
     assert!(stdout.contains("build"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert!(world.contains("fakeblock:noarch"));
     assert!(!world.contains("fakeblock@2.0.0"));
 
@@ -36,7 +36,9 @@ fn upgrade_path_bbuild_replaces_installed_version_and_updates_world_entry() {
     assert!(info.contains("Version:      2.0.0"));
     assert!(info.contains("Architecture: noarch"));
     assert!(info.contains("version two fakeblock"));
-    assert!(read(per_test_path!("etc/fakeblock.conf")).contains("sound=bip"));
+    assert!(std::fs::read_to_string(per_test_path!("etc/fakeblock.conf"))
+        .unwrap()
+        .contains("sound=bip"));
 }
 
 #[test]
@@ -63,7 +65,7 @@ fn upgrade_dependency_only_pkg_allowed_without_world_change() {
     assert!(stdout.contains("from fakeblock-songs@1.0.0:noarch"));
     assert!(!stdout.contains("world"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert_eq!(world.trim(), "fakeblock");
 
     let explicit = run!("list", "--explicit").unwrap();
@@ -107,7 +109,7 @@ fn upgrade_repository_partid_uses_latest_repository_version() {
     assert!(stdout.contains("fakeblock@1.0.0:noarch"));
     assert!(stdout.contains("from fakeblock@0.9.0:noarch"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert_eq!(world.trim(), "fakeblock");
 
     let explicit = run!("list", "--explicit").unwrap();

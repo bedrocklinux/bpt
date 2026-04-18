@@ -1,4 +1,3 @@
-use crate::e2e::instpkg_testutil::read;
 use crate::*;
 use ::function_name::named;
 use std::os::unix::fs::PermissionsExt;
@@ -15,7 +14,7 @@ fn remove_explicit_pkg_removes_orphaned_dependencies() {
     assert!(stdout.contains("fakeblock@1.0.0:noarch"));
     assert!(stdout.contains("fakeblock-songs@1.0.0:noarch"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert!(world.trim().is_empty());
     assert!(
         !Path::new(per_test_path!(
@@ -45,7 +44,7 @@ fn remove_explicit_pkg_keeps_needed_dependency_as_retain() {
     assert!(stdout.contains("fakeblock-songs@1.0.0:noarch"));
     assert!(stdout.contains("world remove fakeblock-songs"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert!(world.contains("fakeblock"));
     assert!(!world.contains("fakeblock-songs"));
 
@@ -65,7 +64,7 @@ fn remove_rejects_dependency_only_pkg() {
     assert!(stderr.contains("does not match any world entry"));
     assert!(stderr.contains("fakeblock-songs"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert!(world.contains("fakeblock"));
     assert!(!world.contains("fakeblock-songs"));
 }
@@ -97,7 +96,7 @@ fn remove_forget_clears_metadata_when_file_removal_fails() {
     let stdout = run!("remove", "--forget", "fakeblock").unwrap();
     assert!(stdout.contains("Updated installed package set"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert!(world.trim().is_empty());
     assert!(
         !Path::new(per_test_path!(

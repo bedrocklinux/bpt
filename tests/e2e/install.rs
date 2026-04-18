@@ -1,4 +1,4 @@
-use crate::e2e::instpkg_testutil::{read, write_modified_bbuild};
+use crate::e2e::common::bbuild::write_modified_bbuild;
 use crate::*;
 use ::function_name::named;
 use std::path::Path;
@@ -13,7 +13,7 @@ fn install_repository_pkg_installs_dependencies_and_marks_world_explicit() {
     assert!(stdout.contains("fakeblock@1.0.0:noarch"));
     assert!(stdout.contains("fakeblock-songs@1.0.0:noarch"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert!(world.contains("fakeblock"));
     assert!(!world.contains("fakeblock-songs"));
 
@@ -44,7 +44,7 @@ fn install_bbuild_path_pins_arch_in_world_and_builds() {
     assert!(stdout.contains("fakeblock@1.0.0:noarch"));
     assert!(stdout.contains("build"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert!(world.contains("fakeblock:noarch"));
     assert!(!world.contains("fakeblock@1.0.0"));
 }
@@ -59,7 +59,7 @@ fn install_bpt_url_pins_arch_in_world() {
     assert!(stdout.contains("Install"));
     assert!(stdout.contains("fakeblock@1.0.0:noarch"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert!(world.contains("fakeblock:noarch"));
     assert!(!world.contains("fakeblock@1.0.0"));
 }
@@ -91,7 +91,7 @@ fn install_dependency_make_explicit_uses_retain() {
     assert!(stdout.contains("fakeblock-songs@1.0.0:noarch"));
     assert!(stdout.contains("world add fakeblock-songs"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert!(world.contains("fakeblock"));
     assert!(world.contains("fakeblock-songs"));
 }
@@ -107,7 +107,7 @@ fn install_reinstall_dependency_only_upgrades_same_version_without_world_add() {
     assert!(stdout.contains("fakeblock-songs@1.0.0:noarch"));
     assert!(stdout.contains("from fakeblock-songs@1.0.0:noarch"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert!(world.contains("fakeblock"));
     assert!(!world.contains("fakeblock-songs"));
 
@@ -125,7 +125,7 @@ fn install_bpt_path_pins_arch_in_world() {
     assert!(stdout.contains("Install"));
     assert!(stdout.contains("fakeblock@1.0.0:noarch"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert!(world.contains("fakeblock:noarch"));
     assert!(!world.contains("fakeblock@1.0.0"));
 }
@@ -171,7 +171,7 @@ build() {
     assert!(stderr.contains("usr/bin/fakeblock"));
     assert!(stderr.contains("fakeblock-conflict@1.0.0:noarch"));
 
-    let world = read(per_test_path!("etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("etc/bpt/world")).unwrap();
     assert_eq!(world.trim(), "fakeblock");
     assert!(
         !Path::new(per_test_path!(
@@ -189,30 +189,12 @@ fn install_local_bpt_bootstraps_missing_bpt_infrastructure() {
     let root = per_test_path!("fresh-root");
     std::fs::remove_dir_all(root).unwrap_or(());
 
-    let result = std::process::Command::new(env!("CARGO_BIN_EXE_bpt"))
-        .args([
-            "-SVy",
-            "-R",
-            root,
-            "-O",
-            root,
-            "install",
-            repo_path!("fakeblock-songs@1.0.0:noarch.bpt"),
-        ])
-        .output()
-        .expect("failed to execute bpt");
-
-    assert!(
-        result.status.success(),
-        "{}",
-        String::from_utf8_lossy(&result.stderr)
-    );
-
-    let stdout = String::from_utf8_lossy(&result.stdout);
+    let stdout =
+        run_at!(root, "install", repo_path!("fakeblock-songs@1.0.0:noarch.bpt")).unwrap();
     assert!(stdout.contains("Install"));
     assert!(stdout.contains("fakeblock-songs@1.0.0:noarch"));
 
-    let world = read(per_test_path!("fresh-root/etc/bpt/world"));
+    let world = std::fs::read_to_string(per_test_path!("fresh-root/etc/bpt/world")).unwrap();
     assert!(world.contains("fakeblock-songs:noarch"));
     assert!(
         Path::new(per_test_path!(

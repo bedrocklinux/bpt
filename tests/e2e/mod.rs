@@ -9,7 +9,6 @@ mod fetch;
 mod files;
 mod info;
 mod install;
-mod instpkg_testutil;
 mod list;
 mod make_repo;
 mod provides;

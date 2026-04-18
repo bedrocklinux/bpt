@@ -1,21 +1,7 @@
+use crate::e2e::common::run::run_bpt_at_with_envs;
 use crate::*;
 use ::function_name::named;
 use std::path::Path;
-use std::process::Command;
-
-fn run_with_cache_home(root: &str, cache_home: &str, args: &[&str]) -> Result<String, String> {
-    let result = Command::new(env!("CARGO_BIN_EXE_bpt"))
-        .args(["-SVy", "-R", root, "-O", root])
-        .args(args)
-        .env("XDG_CACHE_HOME", cache_home)
-        .output()
-        .expect("failed to execute bpt");
-    if result.status.success() {
-        Ok(String::from_utf8_lossy(&result.stdout).to_string())
-    } else {
-        Err(String::from_utf8_lossy(&result.stderr).to_string())
-    }
-}
 
 #[test]
 #[named]
@@ -30,7 +16,9 @@ fn clean_without_flags_removes_package_and_source_cache() {
     std::fs::write(format!("{pkg_cache}/pkg-entry"), "pkg").unwrap();
     std::fs::write(format!("{src_cache}/src-entry"), "src").unwrap();
 
-    let stdout = run_with_cache_home(per_test_path!(), &cache_home, &["clean"]).unwrap();
+    let stdout =
+        run_bpt_at_with_envs(per_test_path!(), &["clean"], &[("XDG_CACHE_HOME", cache_home)])
+            .unwrap();
     assert!(stdout.contains("Removed 2 cached items"));
     assert!(!Path::new(&format!("{pkg_cache}/pkg-entry")).exists());
     assert!(!Path::new(&format!("{src_cache}/src-entry")).exists());
@@ -49,8 +37,12 @@ fn clean_packages_only_preserves_source_cache() {
     std::fs::write(format!("{pkg_cache}/pkg-entry"), "pkg").unwrap();
     std::fs::write(format!("{src_cache}/src-entry"), "src").unwrap();
 
-    let stdout =
-        run_with_cache_home(per_test_path!(), &cache_home, &["clean", "--packages"]).unwrap();
+    let stdout = run_bpt_at_with_envs(
+        per_test_path!(),
+        &["clean", "--packages"],
+        &[("XDG_CACHE_HOME", cache_home)],
+    )
+    .unwrap();
     assert!(stdout.contains("Removed 1 cached items"));
     assert!(!Path::new(&format!("{pkg_cache}/pkg-entry")).exists());
     assert!(Path::new(&format!("{src_cache}/src-entry")).exists());
@@ -69,8 +61,12 @@ fn clean_source_only_preserves_package_cache() {
     std::fs::write(format!("{pkg_cache}/pkg-entry"), "pkg").unwrap();
     std::fs::write(format!("{src_cache}/src-entry"), "src").unwrap();
 
-    let stdout =
-        run_with_cache_home(per_test_path!(), &cache_home, &["clean", "--source"]).unwrap();
+    let stdout = run_bpt_at_with_envs(
+        per_test_path!(),
+        &["clean", "--source"],
+        &[("XDG_CACHE_HOME", cache_home)],
+    )
+    .unwrap();
     assert!(stdout.contains("Removed 1 cached items"));
     assert!(Path::new(&format!("{pkg_cache}/pkg-entry")).exists());
     assert!(!Path::new(&format!("{src_cache}/src-entry")).exists());
@@ -89,7 +85,9 @@ fn clean_dry_run_does_not_remove_cache_entries() {
     std::fs::write(format!("{pkg_cache}/pkg-entry"), "pkg").unwrap();
     std::fs::write(format!("{src_cache}/src-entry"), "src").unwrap();
 
-    let stdout = run_with_cache_home(per_test_path!(), &cache_home, &["clean", "-D"]).unwrap();
+    let stdout =
+        run_bpt_at_with_envs(per_test_path!(), &["clean", "-D"], &[("XDG_CACHE_HOME", cache_home)])
+            .unwrap();
     assert!(stdout.contains("Dry run would have removed 2 cached items"));
     assert!(Path::new(&format!("{pkg_cache}/pkg-entry")).exists());
     assert!(Path::new(&format!("{src_cache}/src-entry")).exists());

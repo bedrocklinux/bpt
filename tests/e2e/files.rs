@@ -1,4 +1,4 @@
-use crate::e2e::instpkg_testutil::write_modified_bbuild;
+use crate::e2e::common::bbuild::write_modified_bbuild;
 use crate::*;
 use ::function_name::named;
 

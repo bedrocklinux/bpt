@@ -265,26 +265,12 @@ fn sign_needed_only_resigns_invalid_files() {
         .unwrap();
     drop(file);
 
-    let result = std::process::Command::new(env!("CARGO_BIN_EXE_bpt"))
-        .args([
-            "-y",
-            "-R",
-            per_test_path!(),
-            "-O",
-            per_test_path!(),
-            "-P",
-            common_path!("etc/bpt/private-keys/test-key-password-is-bpt.key"),
-            "--priv-key-passphrase-file",
-            common_path!("etc/bpt/private-keys/test-key-password-is-bpt.passphrase"),
-            "sign",
-            "--needed",
-            per_test_path!("fakeblock@1.0.0.bbuild"),
-            per_test_path!("fakeblock-songs@1.0.0.bbuild"),
-        ])
-        .output()
-        .expect("failed to execute bpt");
-    assert!(result.status.success());
-    let stdout = String::from_utf8_lossy(&result.stdout);
+    let stdout = run_bpt_sign!(
+        "--needed",
+        per_test_path!("fakeblock@1.0.0.bbuild"),
+        per_test_path!("fakeblock-songs@1.0.0.bbuild")
+    )
+    .unwrap();
     assert!(stdout.contains("Signed 1 of 2 files"));
 
     let valid_after = std::fs::metadata(per_test_path!("fakeblock@1.0.0.bbuild"))

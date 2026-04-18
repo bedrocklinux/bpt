@@ -1,3 +1,25 @@
+/// Run `bpt` at a specified root with given arguments along with implied common test arguments
+///
+/// Same as `run!` but takes an explicit root path instead of using `per_test_path!()`.
+#[macro_export]
+macro_rules! run_at {
+    ($root:expr, $($arg:expr),*) => {{
+        let root = $root;
+        let result = std::process::Command::new(env!("CARGO_BIN_EXE_bpt"))
+            .args(&["-SVy",
+                  "-R", root,
+                  "-O", root,
+                  $($arg), *])
+            .output()
+            .expect("failed to execute bpt");
+        if result.status.success() {
+            Ok(String::from_utf8_lossy(&result.stdout).to_string())
+        } else {
+            Err(String::from_utf8_lossy(&result.stderr).to_string())
+        }
+    }}
+}
+
 /// Run `bpt` with given arguments along with implied common test arguments
 ///
 /// Common arguments:
@@ -9,19 +31,28 @@
 #[macro_export]
 macro_rules! run {
     ($($arg:expr),*) => {{
-        let result = std::process::Command::new(env!("CARGO_BIN_EXE_bpt"))
-            .args(&["-SVy",
-                  "-R", per_test_path!(),
-                  "-O", per_test_path!(),
-                  $($arg), *])
-            .output()
-            .expect("failed to execute bpt");
-        if result.status.success() {
-            Ok(String::from_utf8_lossy(&result.stdout).to_string())
-        } else {
-            Err(String::from_utf8_lossy(&result.stderr).to_string())
-        }
+        run_at!(per_test_path!(), $($arg),*)
     }}
+}
+
+/// Run `bpt` at a specified root with custom environment variables.
+pub fn run_bpt_at_with_envs(
+    root: &str,
+    args: &[&str],
+    envs: &[(&str, &str)],
+) -> Result<String, String> {
+    let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_bpt"));
+    cmd.args(["-SVy", "-R", root, "-O", root]);
+    cmd.args(args);
+    for (key, value) in envs {
+        cmd.env(key, value);
+    }
+    let result = cmd.output().expect("failed to execute bpt");
+    if result.status.success() {
+        Ok(String::from_utf8_lossy(&result.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&result.stderr).to_string())
+    }
 }
 
 /// Run `bpt sign` with proper key setup

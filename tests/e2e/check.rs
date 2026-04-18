@@ -1,42 +1,55 @@
-use crate::e2e::instpkg_testutil::{rewrite_bpt_owner_to_current_ids, write_modified_bbuild};
+use crate::e2e::common::bbuild::write_modified_bbuild;
 use crate::*;
 use ::function_name::named;
-use std::process::Command;
 
-fn custom_root(name: &str) -> String {
-    format!("/tmp/bpt-check-{}-{name}", std::process::id())
-}
+fn rewrite_bpt_owner_to_current_ids(path: &str) {
+    use nix::unistd::{getgid, getuid};
+    use std::io::{Cursor, Read};
 
-fn setup_custom_root(root: &str) {
-    *crate::e2e::common::setup::COMMON_SETUP;
-    std::fs::remove_dir_all(root).unwrap_or(());
-    crate::e2e::common::setup::copy_dir(common_path!("etc/bpt"), &format!("{root}/etc/bpt"));
-    crate::e2e::common::setup::copy_dir(common_path!("var"), &format!("{root}/var"));
-    let conf_path = format!("{root}/etc/bpt/bpt.conf");
-    let conf = std::fs::read_to_string(&conf_path).unwrap();
-    let conf = conf.replace("tmp = /tmp", &format!("tmp = {root}/tmp"));
-    std::fs::write(conf_path, conf).unwrap();
-}
+    const BPT_MAGIC: &[u8] = b"bpt\0";
 
-fn run_at_root(root: &str, args: &[&str]) -> Result<String, String> {
-    let result = Command::new(env!("CARGO_BIN_EXE_bpt"))
-        .args(["-SVy", "-R", root, "-O", root])
-        .args(args)
-        .output()
-        .expect("failed to execute bpt");
-    if result.status.success() {
-        Ok(String::from_utf8_lossy(&result.stdout).to_string())
-    } else {
-        Err(String::from_utf8_lossy(&result.stderr).to_string())
+    let uid = getuid().as_raw() as u64;
+    let gid = getgid().as_raw() as u64;
+    let bytes = std::fs::read(path).unwrap();
+    assert!(
+        bytes.starts_with(BPT_MAGIC),
+        "expected `{path}` to begin with bpt magic"
+    );
+
+    let tarball = zstd::stream::decode_all(Cursor::new(&bytes[BPT_MAGIC.len()..])).unwrap();
+    let mut archive = tar::Archive::new(Cursor::new(tarball));
+    let mut rebuilt = Vec::new();
+    {
+        let mut builder = tar::Builder::new(&mut rebuilt);
+        for entry in archive.entries().unwrap() {
+            let mut entry = entry.unwrap();
+            let mut header = entry.header().clone();
+            let mut data = Vec::new();
+            entry.read_to_end(&mut data).unwrap();
+            header.set_uid(uid);
+            header.set_gid(gid);
+            header.set_cksum();
+            builder.append(&header, Cursor::new(data)).unwrap();
+        }
+        builder.finish().unwrap();
     }
+
+    let compressed = zstd::stream::encode_all(Cursor::new(rebuilt), 0).unwrap();
+    let mut out = Vec::with_capacity(BPT_MAGIC.len() + compressed.len());
+    out.extend_from_slice(BPT_MAGIC);
+    out.extend_from_slice(&compressed);
+    std::fs::write(path, out).unwrap();
 }
 
 fn prepare_backup_fixture(root: &str) {
-    setup_custom_root(root);
+    let conf_path = format!("{root}etc/bpt/bpt.conf");
+    let conf = std::fs::read_to_string(&conf_path).unwrap();
+    let conf = conf.replace("tmp = /tmp", &format!("tmp = {root}tmp"));
+    std::fs::write(conf_path, conf).unwrap();
 
     write_modified_bbuild(
         repo_path!("fakeblock@1.0.0.bbuild"),
-        &format!("{root}/fakeblock@1.0.0.bbuild"),
+        &format!("{root}fakeblock@1.0.0.bbuild"),
         &[(
             "depends=\"fakeblock-songs>=1.0.0\"",
             "depends=\"fakeblock-songs>=1.0.0\"\nbackup=\"etc/fakeblock.conf\"",
@@ -44,17 +57,17 @@ fn prepare_backup_fixture(root: &str) {
     );
 
     let songs_bbuild = repo_path!("fakeblock-songs@1.0.0.bbuild");
-    let fakeblock_bbuild = format!("{root}/fakeblock@1.0.0.bbuild");
-    let _ = run_at_root(root, &["build", songs_bbuild]).unwrap();
-    let _ = run_at_root(root, &["build", &fakeblock_bbuild]).unwrap();
+    let fakeblock_bbuild = format!("{root}fakeblock@1.0.0.bbuild");
+    let _ = run_at!(root, "build", songs_bbuild).unwrap();
+    let _ = run_at!(root, "build", &fakeblock_bbuild).unwrap();
 
-    let songs_bpt = format!("{root}/fakeblock-songs@1.0.0:noarch.bpt");
-    let fakeblock_bpt = format!("{root}/fakeblock@1.0.0:noarch.bpt");
+    let songs_bpt = format!("{root}fakeblock-songs@1.0.0:noarch.bpt");
+    let fakeblock_bpt = format!("{root}fakeblock@1.0.0:noarch.bpt");
     rewrite_bpt_owner_to_current_ids(&songs_bpt);
     rewrite_bpt_owner_to_current_ids(&fakeblock_bpt);
 
-    let _ = run_at_root(root, &["install", &songs_bpt]).unwrap();
-    let _ = run_at_root(root, &["install", &fakeblock_bpt]).unwrap();
+    let _ = run_at!(root, "install", &songs_bpt).unwrap();
+    let _ = run_at!(root, "install", &fakeblock_bpt).unwrap();
 }
 
 #[test]
@@ -148,16 +161,16 @@ fn check_missing_requested_pkg_errors() {
 #[test]
 #[named]
 fn check_backup_diff_warns_but_succeeds() {
-    let root = custom_root(function_name!());
-    prepare_backup_fixture(&root);
-    std::fs::write(format!("{root}/etc/fakeblock.conf"), "sound=zap\n").unwrap();
+    setup_test!();
+    prepare_backup_fixture(per_test_path!());
+    std::fs::write(per_test_path!("etc/fakeblock.conf"), "sound=zap\n").unwrap();
 
-    let stdout = run_at_root(&root, &["check", "fakeblock"]).unwrap();
+    let stdout = run!("check", "fakeblock").unwrap();
     assert!(stdout.contains("Warning:"));
     assert!(stdout.contains("Installed backup file differences"));
     assert!(stdout.contains("fakeblock@1.0.0:noarch"));
     assert!(stdout.contains("Incorrect sha256:"));
-    assert!(stdout.contains(&format!("{root}/etc/fakeblock.conf")));
+    assert!(stdout.contains(per_test_path!("etc/fakeblock.conf")));
     assert!(stdout.contains("\nChecked installed package fakeblock@1.0.0:noarch"));
     assert!(stdout.contains("Checked installed package fakeblock@1.0.0:noarch"));
 }
@@ -165,25 +178,25 @@ fn check_backup_diff_warns_but_succeeds() {
 #[test]
 #[named]
 fn check_backup_diff_strict_errors() {
-    let root = custom_root(function_name!());
-    prepare_backup_fixture(&root);
-    std::fs::write(format!("{root}/etc/fakeblock.conf"), "sound=zap\n").unwrap();
+    setup_test!();
+    prepare_backup_fixture(per_test_path!());
+    std::fs::write(per_test_path!("etc/fakeblock.conf"), "sound=zap\n").unwrap();
 
-    let stderr = run_at_root(&root, &["check", "--strict", "fakeblock"]).unwrap_err();
+    let stderr = run!("check", "--strict", "fakeblock").unwrap_err();
     assert!(stderr.contains("Installed package integrity check failed"));
     assert!(stderr.contains("fakeblock@1.0.0:noarch"));
     assert!(stderr.contains("Incorrect sha256:"));
-    assert!(stderr.contains(&format!("{root}/etc/fakeblock.conf")));
+    assert!(stderr.contains(per_test_path!("etc/fakeblock.conf")));
 }
 
 #[test]
 #[named]
 fn check_backup_diff_ignore_backup_succeeds_silently() {
-    let root = custom_root(function_name!());
-    prepare_backup_fixture(&root);
-    std::fs::write(format!("{root}/etc/fakeblock.conf"), "sound=zap\n").unwrap();
+    setup_test!();
+    prepare_backup_fixture(per_test_path!());
+    std::fs::write(per_test_path!("etc/fakeblock.conf"), "sound=zap\n").unwrap();
 
-    let stdout = run_at_root(&root, &["check", "--ignore-backup", "fakeblock"]).unwrap();
+    let stdout = run!("check", "--ignore-backup", "fakeblock").unwrap();
     assert!(!stdout.contains("Warning:"));
     assert!(!stdout.contains("Incorrect sha256:"));
     assert!(!stdout.contains("fakeblock.conf"));
@@ -193,10 +206,9 @@ fn check_backup_diff_ignore_backup_succeeds_silently() {
 #[test]
 #[named]
 fn check_rejects_strict_with_ignore_backup() {
-    let root = custom_root(function_name!());
-    setup_custom_root(&root);
+    setup_test!();
 
-    let stderr = run_at_root(&root, &["check", "--strict", "--ignore-backup"]).unwrap_err();
+    let stderr = run!("check", "--strict", "--ignore-backup").unwrap_err();
     assert!(stderr.contains("cannot be used with"));
     assert!(stderr.contains("--ignore-backup"));
 }

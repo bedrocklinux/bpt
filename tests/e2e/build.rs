@@ -1,23 +1,9 @@
-use crate::e2e::instpkg_testutil::write_modified_bbuild;
+use crate::e2e::common::run::run_bpt_at_with_envs;
+use crate::e2e::common::bbuild::write_modified_bbuild;
 use crate::*;
 use ::function_name::named;
 use std::os::unix::fs::symlink;
 use std::path::Path;
-use std::process::Command;
-
-fn run_at_root_with_path(root: &str, path: &str, args: &[&str]) -> Result<String, String> {
-    let result = Command::new(env!("CARGO_BIN_EXE_bpt"))
-        .args(["-SVy", "-R", root, "-O", root])
-        .args(args)
-        .env("PATH", path)
-        .output()
-        .expect("failed to execute bpt");
-    if result.status.success() {
-        Ok(String::from_utf8_lossy(&result.stdout).to_string())
-    } else {
-        Err(String::from_utf8_lossy(&result.stderr).to_string())
-    }
-}
 
 #[test]
 #[named]
@@ -267,10 +253,10 @@ fn build_makebin_group_alias_expands_to_missing_bins() {
     std::fs::create_dir_all(&bindir).unwrap();
     symlink("/bin/sh", per_test_path!("bin/sh")).unwrap();
 
-    let result = run_at_root_with_path(
+    let result = run_bpt_at_with_envs(
         per_test_path!(),
-        &bindir,
         &["build", per_test_path!("fakeblock@1.0.0.bbuild")],
+        &[("PATH", bindir)],
     );
     assert!(result.is_err());
     let stderr = result.unwrap_err();
