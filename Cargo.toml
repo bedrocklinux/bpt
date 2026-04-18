@@ -9,7 +9,7 @@ name = "bpt"
 readme = "README.md"
 repository = "https://github.com/bedrocklinux/bpt"
 rust-version = "1.88.0" # let-chains
-version = "0.1.5"
+version = "0.1.6"
 include = [
 	"/Cargo.toml",
 	"/Cargo.lock",
