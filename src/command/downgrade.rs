@@ -42,7 +42,7 @@ pub fn downgrade(flags: CommonFlags, pkgs: Vec<PkgPathUrlRepo>) -> Result<String
         return Ok(format!("Dry ran {}", plan.summary().to_lowercase()));
     }
 
-    println!("Continuing will:\n{plan}");
+    print!("Continuing will:\n{plan}");
     if !flags.yes && !confirm()? {
         return Err(Err::ConfirmDenied);
     }
@@ -99,9 +99,13 @@ pub fn downgrade(flags: CommonFlags, pkgs: Vec<PkgPathUrlRepo>) -> Result<String
         available_bpts,
         buildargs: buildargs.as_ref(),
     })?;
-    print_bptnew(&bptnew);
 
-    println!();
+    if !bptnew.is_empty() {
+        for path in bptnew {
+            println!("{}Created{} {}.bptnew", Color::Warn, Color::Default, path);
+        }
+    }
+
     Ok("Updated installed package set".to_string())
 }
 
@@ -136,16 +140,5 @@ impl DowngradeBuildSupport {
             installed_pkgs,
             available_bpts,
         }
-    }
-}
-
-fn print_bptnew(paths: &[Utf8PathBuf]) {
-    if paths.is_empty() {
-        return;
-    }
-
-    println!();
-    for path in paths {
-        println!("{}Created{} {}.bptnew", Color::Warn, Color::Default, path);
     }
 }

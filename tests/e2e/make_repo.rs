@@ -121,7 +121,7 @@ fn make_repo_prompt_accept_continues() {
 
     let stdout = run_bpt_make_repo_prompt!(b"y\n", "-O", per_test_path!()).unwrap();
     assert!(stdout.contains("Continuing will:"));
-    assert!(stdout.contains("\n\nUpdated repository files from 1 *.bbuild file(s)"));
+    assert!(stdout.contains("\nUpdated repository files from 1 *.bbuild file(s)"));
     assert!(stdout.contains("Updated repository files from 1 *.bbuild file(s)"));
     assert!(Path::new(per_test_path!("fakeblock@1.0.0:noarch.bpt")).exists());
 }

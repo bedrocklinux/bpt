@@ -54,7 +54,7 @@ fn sync_writes_single_index() {
     let source = repo_path!("noarch.pkgidx");
     let stdout = run!("sync", source).unwrap();
     assert!(stdout.contains("Synchronized"));
-    assert!(stdout.contains("\n\nSynchronized"));
+    assert!(stdout.contains("\nSynchronized"));
     assert!(stdout.contains(source));
     assert_eq!(count_index_files(per_test_path!("var/lib/bpt/pkgidx")), 1);
     assert_eq!(count_index_files(per_test_path!("var/lib/bpt/fileidx")), 0);

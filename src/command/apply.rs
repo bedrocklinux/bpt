@@ -1,7 +1,6 @@
 use crate::{
     cli::*, collection::*, color::Color, constant::*, error::*, file::*, io::*, reconcile::*,
 };
-use camino::Utf8PathBuf;
 use std::cell::RefCell;
 use std::fs::create_dir_all;
 
@@ -39,11 +38,10 @@ pub fn apply(flags: CommonFlags) -> Result<String, Err> {
 
     if flags.dry_run {
         println!("{}Would have:{}\n{plan}", Color::Warn, Color::Default);
-        println!();
         return Ok(format!("Dry ran {}", plan.summary().to_lowercase()));
     }
 
-    println!("Continuing will:\n{plan}");
+    print!("Continuing will:\n{plan}");
     if !flags.yes && !confirm()? {
         return Err(Err::ConfirmDenied);
     }
@@ -75,19 +73,13 @@ pub fn apply(flags: CommonFlags) -> Result<String, Err> {
         available_bpts,
         buildargs: None,
     })?;
-    print_bptnew(&bptnew);
 
-    println!();
+    if !bptnew.is_empty() {
+        println!();
+        for path in bptnew {
+            println!("{}Created{} {}.bptnew", Color::Warn, Color::Default, path);
+        }
+    }
+
     Ok("Updated installed package set".to_string())
-}
-
-fn print_bptnew(paths: &[Utf8PathBuf]) {
-    if paths.is_empty() {
-        return;
-    }
-
-    println!();
-    for path in paths {
-        println!("{}Created{} {}.bptnew", Color::Warn, Color::Default, path);
-    }
 }

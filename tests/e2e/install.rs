@@ -260,9 +260,9 @@ fn install_backup_file_difference_creates_bptnew() {
 
     let stdout = run!("install", per_test_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Install"));
-    assert!(stdout.contains("\n\nCreated"));
+    assert!(stdout.contains("\nCreated"));
     assert!(stdout.contains("Created"));
-    assert!(stdout.contains(".bptnew\n\nUpdated installed package set"));
+    assert!(stdout.contains(".bptnew\nUpdated installed package set"));
     assert!(stdout.contains("etc/fakeblock.conf.bptnew"));
     assert!(Path::new(per_test_path!("etc/fakeblock.conf.bptnew")).exists());
 }

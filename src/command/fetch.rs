@@ -27,7 +27,6 @@ pub fn fetch(flags: CommonFlags, pkgs: Vec<PartId>) -> Result<String, Err> {
                 pkginfo.repopath.color()
             );
         }
-        println!();
         return Ok(format!("Dry ran fetch of {} package(s)", pkgs.len()));
     }
 

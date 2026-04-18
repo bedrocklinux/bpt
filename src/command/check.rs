@@ -7,42 +7,6 @@ enum BackupCheckMode {
     Ignore,
 }
 
-fn format_check_report(issues_by_pkg: &[(String, Vec<String>)]) -> String {
-    let mut out = String::new();
-
-    for (idx, (pkgid, issues)) in issues_by_pkg.iter().enumerate() {
-        if idx != 0 {
-            out.push('\n');
-        }
-        out.push_str(pkgid);
-        out.push('\n');
-        for issue in issues {
-            out.push_str("  ");
-            out.push_str(issue);
-            out.push('\n');
-        }
-    }
-
-    if out.ends_with('\n') {
-        out.pop();
-    }
-
-    out
-}
-
-fn print_backup_warnings(warnings_by_pkg: &[(String, Vec<String>)]) {
-    if warnings_by_pkg.is_empty() {
-        return;
-    }
-
-    println!(
-        "{}Warning:{} Installed backup file differences:\n{}",
-        Color::Warn,
-        Color::Default,
-        format_check_report(warnings_by_pkg),
-    );
-}
-
 pub fn check(
     flags: CommonFlags,
     pkgs: Vec<PartId>,
@@ -111,14 +75,17 @@ pub fn check(
         }
     }
 
-    print_backup_warnings(&warning_issues_by_pkg);
+    if !warning_issues_by_pkg.is_empty() {
+        println!(
+            "{}Warning:{} Installed backup file differences:\n{}",
+            Color::Warn,
+            Color::Default,
+            format_check_report(&warning_issues_by_pkg),
+        );
+    }
 
     if !error_issues_by_pkg.is_empty() {
         return Err(Err::CheckFailed(format_check_report(&error_issues_by_pkg)));
-    }
-
-    if !warning_issues_by_pkg.is_empty() {
-        println!();
     }
 
     if targets.len() == 1 {
@@ -126,6 +93,29 @@ pub fn check(
     } else {
         Ok(format!("Checked all {} installed packages", targets.len()))
     }
+}
+
+fn format_check_report(issues_by_pkg: &[(String, Vec<String>)]) -> String {
+    let mut out = String::new();
+
+    for (idx, (pkgid, issues)) in issues_by_pkg.iter().enumerate() {
+        if idx != 0 {
+            out.push('\n');
+        }
+        out.push_str(pkgid);
+        out.push('\n');
+        for issue in issues {
+            out.push_str("  ");
+            out.push_str(issue);
+            out.push('\n');
+        }
+    }
+
+    if out.ends_with('\n') {
+        out.pop();
+    }
+
+    out
 }
 
 #[cfg(test)]

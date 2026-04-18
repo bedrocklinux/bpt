@@ -34,7 +34,6 @@ pub fn sync(flags: CommonFlags, idxs: Vec<IdxPathUrl>, force: bool) -> Result<St
 
     if flags.dry_run {
         println!("{}Would have:{}\n{plan}", Color::Warn, Color::Default);
-        println!();
         return Ok(format!(
             "Dry ran synchronization of {} index(es)",
             idxs.len()
@@ -56,8 +55,6 @@ pub fn sync(flags: CommonFlags, idxs: Vec<IdxPathUrl>, force: bool) -> Result<St
         Cache::from_root_path(&flags.root_dir, SRC_CACHE, "source cache")?
             .evict(bpt_conf.cache.cache_src_max_days)?;
     }
-
-    println!();
 
     if idxs.len() == 1 {
         Ok(format!("Synchronized {}", idxs[0].as_str()))

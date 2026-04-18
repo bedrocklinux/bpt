@@ -78,7 +78,6 @@ pub fn make_repo(flags: CommonFlags) -> Result<String, Err> {
             Color::Warn,
             Color::Default
         );
-        println!();
         return Ok(format!(
             "Dry ran make-repo of {} *.bbuild file(s)",
             bbuilds.len()
@@ -127,8 +126,6 @@ pub fn make_repo(flags: CommonFlags) -> Result<String, Err> {
         privkey,
         pubkeys,
     })?;
-
-    println!();
 
     Ok(format!(
         "Updated repository files from {} *.bbuild file(s)",

@@ -131,7 +131,6 @@ pub fn build(
                 target.pkgid.color()
             );
         }
-        println!();
         return Ok(format!(
             "Dry ran build of {} package(s)",
             build_targets.len()
@@ -199,8 +198,6 @@ pub fn build(
         available_bpts.borrow_mut().add(bpt);
         bpts.push(filename);
     }
-
-    println!();
 
     if bpts.len() == 1 {
         Ok(format!("Built {}", bpts[0]))

@@ -175,7 +175,7 @@ fn build_dry_run_from_path() {
 
     let stdout = run!("build", "-D", repo_path!("fakeblock@1.0.0.bbuild")).unwrap();
     assert!(stdout.contains("Would build fakeblock@1.0.0:noarch"));
-    assert!(stdout.contains("Would build fakeblock@1.0.0:noarch\n\nDry ran build of 1 package(s)"));
+    assert!(stdout.contains("Would build fakeblock@1.0.0:noarch\nDry ran build of 1 package(s)"));
     assert!(stdout.contains("Dry ran build of 1 package(s)"));
     assert!(!Path::new(per_test_path!("fakeblock@1.0.0:noarch.bpt")).exists());
 }

@@ -90,12 +90,10 @@ pub fn search(
                 print!("{}{}{}", Color::Match, mat.as_str(), Color::Default);
                 start = mat.end();
             }
-            print!("{}", &pkgdesc[start..]);
+            println!("{}", &pkgdesc[start..]);
         } else {
-            print!("{pkgdesc}");
+            println!("{pkgdesc}");
         }
-
-        println!();
     }
 
     // This is likely to be parsed by other programs.  Do not complicated output by printing a
